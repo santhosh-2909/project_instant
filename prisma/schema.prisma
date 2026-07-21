@@ -1,0 +1,364 @@
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+// ----------------------------------------------------
+// 1. Registration Management Module
+// ----------------------------------------------------
+
+model Role {
+  roleId   Int    @id @default(autoincrement())
+  roleName String @unique
+  users    User[]
+}
+
+model Country {
+  countryId   Int           @id @default(autoincrement())
+  countryName String        @unique
+  states      State[]
+  users       User[]
+  articles    NewsArticle[]
+}
+
+model State {
+  stateId   Int     @id @default(autoincrement())
+  stateName String
+  countryId Int
+  country   Country @relation(fields: [countryId], references: [countryId])
+  cities    City[]
+  users     User[]
+
+  @@unique([stateName, countryId])
+}
+
+model City {
+  cityId   Int    @id @default(autoincrement())
+  cityName String
+  stateId  Int
+  state    State  @relation(fields: [stateId], references: [stateId])
+  users    User[]
+
+  @@unique([cityName, stateId])
+}
+
+model SecurityQuestion {
+  securityQuestionId Int     @id @default(autoincrement())
+  question           String  @unique
+  description        String?
+  users              User[]
+}
+
+model AccountStatus {
+  statusId    Int     @id @default(autoincrement())
+  statusName  String  @unique // Active, Inactive, Locked
+  description String?
+  users       User[]
+}
+
+model User {
+  userId             String           @id @default(uuid())
+  firstName          String
+  lastName           String
+  email              String           @unique
+  password           String
+  mobileNumber       String
+  countryId          Int
+  stateId            Int
+  cityId             Int
+  statusId           Int
+  roleId             Int
+  securityQuestionId Int
+  securityAnswer     String
+  failedAttempts     Int              @default(0)
+  createdAt          DateTime         @default(now())
+
+  // Relations
+  country          Country          @relation(fields: [countryId], references: [countryId])
+  state            State            @relation(fields: [stateId], references: [stateId])
+  city             City             @relation(fields: [cityId], references: [cityId])
+  status           AccountStatus    @relation(fields: [statusId], references: [statusId])
+  role             Role             @relation(fields: [roleId], references: [roleId])
+  securityQuestion SecurityQuestion @relation(fields: [securityQuestionId], references: [securityQuestionId])
+
+  verificationHistories VerificationHistory[]
+  feedbacks             Feedback[]
+  resolutionsReviewed   Resolution[]
+  reports               Report[]
+}
+
+// ----------------------------------------------------
+// 2. News Retrieval Management Module
+// ----------------------------------------------------
+
+model NewsCategory {
+  categoryId   Int           @id @default(autoincrement())
+  categoryName String        @unique
+  description  String?
+  articles     NewsArticle[]
+}
+
+model NewsSource {
+  sourceId    Int           @id @default(autoincrement())
+  sourceName  String        @unique
+  sourceType  String // E.g. Mainstream, Blog, Social Media
+  websiteURL  String
+  country     String?
+  language    String?
+  status      String // Active, Inactive
+  articles    NewsArticle[]
+}
+
+model APIConfiguration {
+  apiId           Int    @id @default(autoincrement())
+  apiName         String @unique
+  apiKey          String
+  baseURL         String
+  requestLimit    Int
+  refreshInterval Int
+  status          String // Active, Inactive
+}
+
+model Language {
+  languageId   Int           @id @default(autoincrement())
+  languageName String        @unique
+  articles     NewsArticle[]
+}
+
+model NewsArticle {
+  articleId     String   @id @default(uuid())
+  title         String
+  description   String?
+  content       String
+  author        String?
+  publishedDate DateTime
+  sourceId      Int
+  categoryId    Int
+  languageId    Int
+  countryId     Int
+  imageURL      String?
+  newsURL       String?
+  retrievalDate DateTime @default(now())
+  status        String // Retrieved, Saved, Verifying, Verified
+
+  // Relations
+  source   NewsSource   @relation(fields: [sourceId], references: [sourceId])
+  category NewsCategory @relation(fields: [categoryId], references: [categoryId])
+  language Language     @relation(fields: [languageId], references: [languageId])
+  country  Country      @relation(fields: [countryId], references: [countryId])
+
+  retrievalHistories    RetrievalHistory[]
+  verificationHistories VerificationHistory[]
+  evidenceItems         EvidenceRepository[]
+  evidenceHistories     EvidenceHistory[]
+  feedbacks             Feedback[]
+}
+
+model RetrievalHistory {
+  historyId       String      @id @default(uuid())
+  articleId       String
+  retrievalDate   DateTime    @default(now())
+  retrievalStatus String // Success, Failed
+  article         NewsArticle @relation(fields: [articleId], references: [articleId], onDelete: Cascade)
+}
+
+// ----------------------------------------------------
+// 3. News Verification Management Module
+// ----------------------------------------------------
+
+model EmbeddingModel {
+  modelId            Int                   @id @default(autoincrement())
+  modelName          String                @unique
+  modelVersion       String
+  embeddingDimension Int
+  status             String // Active, Inactive
+  histories          VerificationHistory[]
+}
+
+model LLMConfiguration {
+  llmId         Int                   @id @default(autoincrement())
+  modelName     String                @unique
+  provider      String // Google, OpenAI, etc.
+  modelVersion  String
+  temperature   Float
+  maximumTokens Int
+  status        String // Active, Inactive
+  histories     VerificationHistory[]
+}
+
+model SimilarityThreshold {
+  thresholdId            Int                  @id @default(autoincrement())
+  minimumSimilarityScore Float
+  maximumSimilarityScore Float
+  confidenceLevel        String // High, Medium, Low
+  statuses               VerificationStatus[]
+}
+
+model VerificationStatus {
+  verificationId     String              @id @default(uuid())
+  verificationResult String // Likely Real, Likely Fake, Needs Manual Verification
+  confidenceScore    Float
+  verificationDate   DateTime            @default(now())
+  status             String // Completed, In Progress, Failed
+  thresholdId        Int
+  threshold          SimilarityThreshold @relation(fields: [thresholdId], references: [thresholdId])
+  histories          VerificationHistory[]
+}
+
+model VerificationHistory {
+  historyId          String   @id @default(uuid())
+  userId             String
+  articleId          String
+  verificationResult String // Likely Real, Likely Fake, Needs Manual Verification
+  confidenceScore    Float
+  verificationTime   DateTime @default(now())
+  modelId            Int
+  llmId              Int
+  verificationId     String
+
+  // Relations
+  user             User               @relation(fields: [userId], references: [userId])
+  article          NewsArticle        @relation(fields: [articleId], references: [articleId], onDelete: Cascade)
+  embeddingModel   EmbeddingModel     @relation(fields: [modelId], references: [modelId])
+  llmConfig        LLMConfiguration   @relation(fields: [llmId], references: [llmId])
+  verificationStatus VerificationStatus @relation(fields: [verificationId], references: [verificationId])
+  feedbacks        Feedback[]
+}
+
+// ----------------------------------------------------
+// 4. Evidence Management Module
+// ----------------------------------------------------
+
+model TrustedNewsSource {
+  sourceId         Int                  @id @default(autoincrement())
+  sourceName       String               @unique
+  websiteURL       String
+  country          String?
+  language         String?
+  sourceType       String
+  reliabilityScore Float
+  status           String // Active, Inactive
+  evidenceItems    EvidenceRepository[]
+}
+
+model VectorDatabase {
+  vectorId         Int                  @id @default(autoincrement())
+  collectionName   String               @unique
+  embeddingModel   String
+  vectorDimension  Int
+  similarityMetric String
+  status           String // Connected, Disconnected
+  evidenceItems    EvidenceRepository[]
+}
+
+model EvidenceRepository {
+  evidenceId          String             @id @default(uuid())
+  articleId           String
+  evidenceTitle       String
+  evidenceDescription String?
+  evidenceContent     String
+  sourceName          String
+  publicationDate     DateTime
+  evidenceType        String // Supporting, Contradicting
+  similarityScore     Float
+  status              String // Verified, Outdated
+  trustedSourceId     Int?
+  vectorId            Int?
+  article             NewsArticle        @relation(fields: [articleId], references: [articleId], onDelete: Cascade)
+  trustedSource       TrustedNewsSource? @relation(fields: [trustedSourceId], references: [sourceId])
+  vectorDatabase      VectorDatabase?    @relation(fields: [vectorId], references: [vectorId])
+  evidenceHistories   EvidenceHistory[]
+}
+
+model EvidenceHistory {
+  historyId              String             @id @default(uuid())
+  articleId              String
+  retrievedEvidenceCount Int
+  retrievalDate          DateTime           @default(now())
+  verificationStatus     String // Completed, Failed
+  evidenceId             String?
+  article                NewsArticle        @relation(fields: [articleId], references: [articleId], onDelete: Cascade)
+  evidence               EvidenceRepository? @relation(fields: [evidenceId], references: [evidenceId])
+}
+
+// ----------------------------------------------------
+// 5. Feedback Management Module
+// ----------------------------------------------------
+
+model FeedbackType {
+  feedbackTypeId   Int        @id @default(autoincrement())
+  feedbackTypeName String     @unique // Incorrect Result, Unclear Explanation, Suggestions, Other
+  description      String?
+  feedbacks        Feedback[]
+}
+
+model Feedback {
+  feedbackId          String   @id @default(uuid())
+  userId              String
+  articleId           String
+  verificationId      String
+  rating              Int // 1 to 5
+  feedbackDescription String
+  feedbackTypeId      Int
+  submissionDate      DateTime @default(now())
+  status              String // Pending, Reviewed, Resolved
+
+  // Relations
+  user                User                @relation(fields: [userId], references: [userId])
+  article             NewsArticle         @relation(fields: [articleId], references: [articleId], onDelete: Cascade)
+  verificationHistory VerificationHistory @relation(fields: [verificationId], references: [historyId])
+  feedbackType        FeedbackType        @relation(fields: [feedbackTypeId], references: [feedbackTypeId])
+  resolutions         Resolution[]
+}
+
+model Resolution {
+  resolutionId          String   @id @default(uuid())
+  feedbackId            String
+  resolutionDescription String
+  resolutionDate        DateTime @default(now())
+  reviewedBy            String
+  resolutionStatus      String // Pending, Applied, Rejected
+
+  feedback Feedback @relation(fields: [feedbackId], references: [feedbackId])
+  reviewer User     @relation(fields: [reviewedBy], references: [userId])
+}
+
+// ----------------------------------------------------
+// 6. Report Management Module
+// ----------------------------------------------------
+
+model ReportType {
+  reportTypeId Int      @id @default(autoincrement())
+  reportName   String   @unique
+  description  String?
+  reports      Report[]
+}
+
+model ReportFilter {
+  filterId           String    @id @default(uuid())
+  startDate          DateTime?
+  endDate            DateTime?
+  newsCategory       String?
+  newsSource         String?
+  verificationStatus String?
+  reports            Report[]
+}
+
+model Report {
+  reportId       String       @id @default(uuid())
+  reportName     String
+  reportTypeId   Int
+  generatedDate  DateTime     @default(now())
+  generatedBy    String
+  reportFormat   String // PDF, Excel
+  reportStatus   String // Completed, Failed
+  filterId       String
+  reportType     ReportType   @relation(fields: [reportTypeId], references: [reportTypeId])
+  generator      User         @relation(fields: [generatedBy], references: [userId])
+  filter         ReportFilter @relation(fields: [filterId], references: [filterId])
+}
