@@ -1,16 +1,40 @@
-# React + Vite
+# Truth-Guard AI Fake News Verification System - Frontend
 
-This template provides a minimal setup to get React working in Vite with HMR and some Oxlint rules.
+A modern, responsive React + Vite frontend for **Truth-Guard** – an AI-Powered Fake News Verification System.
 
-Currently, two official plugins are available:
+The project features a premium glassmorphic dark theme aesthetic inspired by ChatGPT, Perplexity AI, Vercel, and Stripe Dashboard, complete with interactive AI processing states, analytical results charts, searchable verification history, and responsive layout grids.
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+## 🚀 Tech Stack
 
-## React Compiler
+- **Framework**: React 19 (Functional Components & Hooks)
+- **Build Tool**: Vite
+- **Styling**: Vanilla CSS3 + Custom Theme System (Light / Dark mode toggle)
+- **Routing**: React Router (`react-router-dom` v7)
+- **Icons**: React Icons (`react-icons` v5)
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+## 📁 Key Folder Structure
 
-## Expanding the Oxlint configuration
+- `src/components/`: Reusable interface components (Navbar, Footer, Hero, FeatureCard, Timeline, Stats, VerifyBox, Loader, ResultCard, ConfidenceChart).
+- `src/pages/`: Main navigation views (Home, Verify, Results, History, About, Contact).
+- `src/services/api.js`: Verification simulation logic, LIME explanation engine, and local storage state sync.
+- `src/context/ThemeContext.jsx`: Theme Provider for Light/Dark mode.
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and Oxlint's TypeScript related rules in your project.
+## 🛠️ Getting Started
+
+First, install dependencies:
+
+```bash
+npm install
+```
+
+Run the local development server:
+
+```bash
+npm run dev
+```
+
+Build the production distribution:
+
+```bash
+npm run build
+```
