@@ -1,0 +1,71 @@
+.timeline-section {
+  padding: 80px 32px;
+  max-width: 1280px;
+  margin: 0 auto;
+}
+
+.timeline-container {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 16px;
+  position: relative;
+  margin-top: 40px;
+}
+
+.timeline-card {
+  padding: 24px 18px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  position: relative;
+  z-index: 2;
+}
+
+.timeline-step-badge {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: var(--bg-elevated);
+  border: 2px solid var(--primary);
+  color: var(--primary);
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.1rem;
+  margin-bottom: 16px;
+  box-shadow: 0 0 15px var(--primary-glow);
+  transition: all 0.3s ease;
+}
+
+.timeline-card:hover .timeline-step-badge {
+  background: var(--primary);
+  color: #FFFFFF;
+  transform: scale(1.15);
+}
+
+.timeline-title {
+  font-size: 0.95rem;
+  font-weight: 600;
+  margin-bottom: 8px;
+}
+
+.timeline-desc {
+  font-size: 0.82rem;
+  color: var(--text-muted);
+  line-height: 1.5;
+}
+
+@media (max-width: 1024px) {
+  .timeline-container {
+    grid-template-columns: repeat(3, 1fr);
+    gap: 20px;
+  }
+}
+
+@media (max-width: 640px) {
+  .timeline-container {
+    grid-template-columns: 1fr;
+  }
+}

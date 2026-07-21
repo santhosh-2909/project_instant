@@ -1,0 +1,218 @@
+.hero-section {
+  position: relative;
+  padding: 100px 32px 80px;
+  max-width: 1280px;
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 60px;
+  align-items: center;
+  overflow: hidden;
+}
+
+.hero-content {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  z-index: 2;
+}
+
+.hero-badge {
+  align-self: flex-start;
+  background: var(--primary-light);
+  border: 1px solid var(--border-color-hover);
+  color: var(--primary);
+  padding: 8px 16px;
+  border-radius: var(--radius-pill);
+  font-size: 0.85rem;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  box-shadow: 0 0 15px var(--primary-glow);
+}
+
+.pulse-dot {
+  width: 8px;
+  height: 8px;
+  background: var(--primary);
+  border-radius: 50%;
+  box-shadow: 0 0 10px var(--primary);
+  animation: pulseGlow 1.5s infinite;
+}
+
+.hero-title {
+  font-size: 3.5rem;
+  font-weight: 800;
+  line-height: 1.15;
+  letter-spacing: -0.03em;
+  background: linear-gradient(135deg, var(--text-main) 30%, var(--primary) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.hero-subtitle {
+  font-size: 1.15rem;
+  color: var(--text-muted);
+  line-height: 1.6;
+  max-width: 540px;
+}
+
+.hero-buttons {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin-top: 8px;
+}
+
+.hero-stats-row {
+  display: flex;
+  gap: 32px;
+  margin-top: 16px;
+  padding-top: 24px;
+  border-top: 1px solid var(--border-color);
+}
+
+.hero-mini-stat h4 {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--primary);
+}
+
+.hero-mini-stat p {
+  font-size: 0.85rem;
+  color: var(--text-subtle);
+}
+
+/* AI Graphic Container */
+.hero-visual {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.ai-graphic-card {
+  width: 100%;
+  max-width: 480px;
+  height: 440px;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.orb-background {
+  position: absolute;
+  width: 320px;
+  height: 320px;
+  border-radius: 50%;
+  background: radial-gradient(circle, var(--primary-glow) 0%, rgba(59, 130, 246, 0) 70%);
+  animation: floatAnim 6s ease-in-out infinite;
+  filter: blur(20px);
+}
+
+.scanner-circle {
+  width: 280px;
+  height: 280px;
+  border-radius: 50%;
+  border: 2px dashed rgba(59, 130, 246, 0.4);
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: radarScan 15s linear infinite;
+}
+
+.shield-core {
+  width: 100px;
+  height: 100px;
+  border-radius: var(--radius-xl);
+  background: linear-gradient(135deg, var(--primary) 0%, #2563EB 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #FFFFFF;
+  font-size: 3rem;
+  box-shadow: 0 0 40px var(--primary-glow);
+  z-index: 3;
+}
+
+.floating-badge {
+  position: absolute;
+  padding: 12px 18px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-color-hover);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-md);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text-main);
+  z-index: 4;
+}
+
+.badge-top-right {
+  top: 30px;
+  right: 10px;
+  animation: floatAnim 4s ease-in-out infinite;
+}
+
+.badge-bottom-left {
+  bottom: 40px;
+  left: 10px;
+  animation: floatAnim 5s ease-in-out infinite 1s;
+}
+
+@media (max-width: 1024px) {
+  .hero-section {
+    grid-template-columns: 1fr;
+    padding: 60px 24px 40px;
+    text-align: center;
+  }
+  .hero-content {
+    align-items: center;
+  }
+  .hero-title {
+    font-size: 2.8rem;
+  }
+  .hero-subtitle {
+    margin: 0 auto;
+  }
+  .hero-buttons {
+    justify-content: center;
+  }
+  .hero-stats-row {
+    justify-content: center;
+  }
+  .hero-visual {
+    margin-top: 20px;
+  }
+}
+
+@media (max-width: 600px) {
+  .hero-title {
+    font-size: 2.2rem;
+  }
+  .hero-buttons {
+    flex-direction: column;
+    width: 100%;
+  }
+  .hero-buttons .btn {
+    width: 100%;
+  }
+  .ai-graphic-card {
+    height: 340px;
+  }
+  .scanner-circle {
+    width: 220px;
+    height: 220px;
+  }
+  .shield-core {
+    width: 80px;
+    height: 80px;
+    font-size: 2.2rem;
+  }
+}
