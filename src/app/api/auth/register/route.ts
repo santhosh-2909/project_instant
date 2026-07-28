@@ -1,8 +1,19 @@
 import { NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import * as bcrypt from 'bcryptjs';
+import { normaliseSecurityAnswer } from '@/lib/securityAnswer';
+import { consume, clientKey, rateLimitHeaders, LIMITS } from '@/lib/rateLimit';
 
 export async function POST(request: Request) {
+  // Audit fix S-4: cap automated account creation.
+  const limit = consume(clientKey(request, 'register'), LIMITS.register.limit, LIMITS.register.windowMs);
+  if (!limit.ok) {
+    return NextResponse.json(
+      { error: `Too many registration attempts. Try again in ${limit.retryAfter} seconds.` },
+      { status: 429, headers: rateLimitHeaders(limit) }
+    );
+  }
+
   try {
     const body = await request.json();
     const {
@@ -53,7 +64,7 @@ export async function POST(request: Request) {
 
     // Check duplicate email
     const existingUser = await db.user.findUnique({
-      where: { email },
+      where: { email: String(email).trim().toLowerCase() },
     });
 
     if (existingUser) {
@@ -90,12 +101,16 @@ export async function POST(request: Request) {
     // Hash Password
     const hashedPassword = await bcrypt.hash(password, 10);
 
+    // Audit fix S-2: security answers are password-equivalent secrets and are
+    // hashed, never stored in readable form.
+    const hashedSecurityAnswer = await bcrypt.hash(normaliseSecurityAnswer(securityAnswer), 10);
+
     // Create User
     const newUser = await db.user.create({
       data: {
         firstName,
         lastName,
-        email,
+        email: String(email).trim().toLowerCase(),
         password: hashedPassword,
         mobileNumber,
         countryId: Number(countryId),
@@ -104,7 +119,7 @@ export async function POST(request: Request) {
         statusId: activeStatus.statusId,
         roleId: defaultRole.roleId,
         securityQuestionId: Number(securityQuestionId),
-        securityAnswer: securityAnswer.trim().toLowerCase(), // normalize answer
+        securityAnswer: hashedSecurityAnswer,
       },
     });
 

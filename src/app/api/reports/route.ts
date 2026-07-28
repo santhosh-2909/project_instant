@@ -43,8 +43,8 @@ export async function GET(request: Request) {
     }
 
     // Parse Dates
-    let start = startDateStr ? new Date(startDateStr) : new Date(new Date().setDate(new Date().getDate() - 30));
-    let end = endDateStr ? new Date(endDateStr) : new Date();
+    const start = startDateStr ? new Date(startDateStr) : new Date(new Date().setDate(new Date().getDate() - 30));
+    const end = endDateStr ? new Date(endDateStr) : new Date();
 
     if (end < start) {
       return NextResponse.json({ error: 'End date cannot be earlier than start date.' }, { status: 400 });
@@ -97,7 +97,7 @@ export async function GET(request: Request) {
     // ----------------------------------------------------
     // COMPUTE STATISTICS BASED ON REPORT TYPE
     // ----------------------------------------------------
-    let reportData: any = {};
+    const reportData: any = {};
 
     // 1. Fetch Verification History records matching criteria
     const histories = await db.verificationHistory.findMany({

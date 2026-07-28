@@ -4,6 +4,13 @@ import { db } from '@/lib/db';
 
 export async function GET(request: Request) {
   try {
+    // Audit fix S-5: evidence was readable by any anonymous caller, allowing
+    // enumeration of the whole repository by articleId.
+    const authUser = await getAuthUser();
+    if (!authUser) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
     const { searchParams } = new URL(request.url);
     const articleId = searchParams.get('articleId');
 
@@ -18,6 +25,7 @@ export async function GET(request: Request) {
         vectorDatabase: true,
       },
       orderBy: { similarityScore: 'desc' },
+      take: 100,
     });
 
     const supporting = evidence.filter((item) => item.evidenceType === 'Supporting');

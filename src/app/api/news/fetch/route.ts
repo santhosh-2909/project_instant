@@ -11,10 +11,14 @@ export async function GET(request: Request) {
     const languageId = searchParams.get('languageId');
     const date = searchParams.get('date');
 
+    // Audit fix S-9: bound the result set instead of returning every row.
+    const take = Math.min(Math.max(Number(searchParams.get('limit')) || 24, 1), 100);
+    const skip = Math.max(Number(searchParams.get('offset')) || 0, 0);
+
     // 1. Check if we need to seed mock articles
     const articleCount = await db.newsArticle.count();
     if (articleCount === 0) {
-      console.log('Seeding mock news articles into DB...');
+      console.warn('[api/news/fetch] seeding demo articles (empty NewsArticle table)');
       
       const bbc = await db.newsSource.findFirst({ where: { sourceName: 'BBC News' } });
       const toi = await db.newsSource.findFirst({ where: { sourceName: 'Times of India' } });
@@ -157,26 +161,33 @@ export async function GET(request: Request) {
         country: true,
       },
       orderBy: { publishedDate: 'desc' },
+      take,
+      skip,
     });
 
+    const totalCount = await db.newsArticle.count({ where });
+
     // 4. Log Retrieval History
-    // Write success status
-    if (articles.length > 0) {
-      await Promise.all(
-        articles.map((article) =>
-          db.retrievalHistory.create({
-            data: {
-              articleId: article.articleId,
-              retrievalStatus: 'Success',
-            },
-          })
-        )
-      );
+    //
+    // Audit fix D-5: this previously wrote one row per returned article on
+    // EVERY request, so browsing the list 20 times created hundreds of rows.
+    // A retrieval is now logged once per query against the most relevant
+    // article, and only when the caller actually ran a search.
+    if (articles.length > 0 && (keyword || categoryId || sourceId || countryId || languageId || date)) {
+      await db.retrievalHistory.create({
+        data: {
+          articleId: articles[0].articleId,
+          retrievalStatus: 'Success',
+        },
+      });
     }
 
     return NextResponse.json({
       message: 'News retrieved successfully.',
       count: articles.length,
+      totalCount,
+      offset: skip,
+      limit: take,
       articles,
     });
   } catch (error) {
