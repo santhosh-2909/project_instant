@@ -3,7 +3,7 @@
 import * as React from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { Alert, Button, Card, CardBody, CardHeader, Field, Input } from '@/components/ui';
+import { Alert, Button, Card, CardBody, CardHeader, Field, Input } from '@/client/components/ui';
 
 export function LoginForm() {
   const router = useRouter();

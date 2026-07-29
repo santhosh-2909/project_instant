@@ -1,7 +1,7 @@
 'use client';
 
 import * as React from 'react';
-import { Alert, Button, Card, CardBody } from '@/components/ui';
+import { Alert, Button, Card, CardBody } from '@/client/components/ui';
 
 export default function ErrorBoundary({
   error,

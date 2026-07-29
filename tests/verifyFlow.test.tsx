@@ -2,10 +2,10 @@ import * as React from 'react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { VerifyWorkspace } from '@/components/verify/VerifyWorkspace';
-import { VerdictReport } from '@/components/verify/VerdictReport';
-import { VerificationProgress, STAGES } from '@/components/verify/VerificationProgress';
-import type { VerificationReport } from '@/lib/types';
+import { VerifyWorkspace } from '@/client/components/verify/VerifyWorkspace';
+import { VerdictReport } from '@/client/components/verify/VerdictReport';
+import { VerificationProgress, STAGES } from '@/client/components/verify/VerificationProgress';
+import type { VerificationReport } from '@/shared/types';
 
 const REPORT: VerificationReport = {
   claim: { title: 'Government announces free electricity for all households', url: null, characters: 140 },

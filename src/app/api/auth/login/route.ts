@@ -1,8 +1,8 @@
 import { NextResponse } from 'next/server';
 import * as bcrypt from 'bcryptjs';
-import { db } from '@/lib/db';
-import { signSession, setSessionCookie, clearSessionCookie } from '@/lib/auth';
-import { consume, clientKey, rateLimitHeaders, LIMITS } from '@/lib/rateLimit';
+import { db } from '@/server/data/db';
+import { signSession, setSessionCookie, clearSessionCookie } from '@/server/auth/session';
+import { consume, clientKey, rateLimitHeaders, LIMITS } from '@/server/http/rateLimit';
 
 const MAX_FAILED_ATTEMPTS = 3;
 

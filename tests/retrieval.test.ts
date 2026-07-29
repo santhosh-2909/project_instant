@@ -10,7 +10,7 @@ import {
   stanceFromRating,
   tokenise,
   type RetrievedEvidence,
-} from '@/lib/retrieval';
+} from '@/server/verification/retrieval';
 
 function evidence(overrides: Partial<RetrievedEvidence> = {}): RetrievedEvidence {
   return {

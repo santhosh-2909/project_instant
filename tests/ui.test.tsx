@@ -22,7 +22,7 @@ import {
   Tabs,
   VerdictBadge,
   verdictTone,
-} from '@/components/ui';
+} from '@/client/components/ui';
 
 describe('TC-UI-01 Button', () => {
   it('renders its label and responds to clicks', async () => {

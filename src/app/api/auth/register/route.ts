@@ -1,8 +1,8 @@
 import { NextResponse } from 'next/server';
-import { db } from '@/lib/db';
+import { db } from '@/server/data/db';
 import * as bcrypt from 'bcryptjs';
-import { normaliseSecurityAnswer } from '@/lib/securityAnswer';
-import { consume, clientKey, rateLimitHeaders, LIMITS } from '@/lib/rateLimit';
+import { normaliseSecurityAnswer } from '@/server/auth/securityAnswer';
+import { consume, clientKey, rateLimitHeaders, LIMITS } from '@/server/http/rateLimit';
 
 export async function POST(request: Request) {
   // Audit fix S-4: cap automated account creation.

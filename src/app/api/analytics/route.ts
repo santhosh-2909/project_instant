@@ -7,10 +7,10 @@
  */
 
 import { NextResponse } from 'next/server';
-import { getAuthUser } from '@/lib/auth';
-import { db } from '@/lib/db';
-import { providerStatus } from '@/lib/env';
-import { consume, clientKey, rateLimitHeaders, LIMITS } from '@/lib/rateLimit';
+import { getAuthUser } from '@/server/auth/session';
+import { db } from '@/server/data/db';
+import { providerStatus } from '@/server/config/env';
+import { consume, clientKey, rateLimitHeaders, LIMITS } from '@/server/http/rateLimit';
 
 export async function GET(request: Request) {
   const authUser = await getAuthUser();

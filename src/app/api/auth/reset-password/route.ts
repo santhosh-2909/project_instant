@@ -1,8 +1,8 @@
 import { NextResponse } from 'next/server';
 import * as bcrypt from 'bcryptjs';
-import { db } from '@/lib/db';
-import { hashSecurityAnswer, verifySecurityAnswer } from '@/lib/securityAnswer';
-import { consume, clientKey, rateLimitHeaders, LIMITS } from '@/lib/rateLimit';
+import { db } from '@/server/data/db';
+import { hashSecurityAnswer, verifySecurityAnswer } from '@/server/auth/securityAnswer';
+import { consume, clientKey, rateLimitHeaders, LIMITS } from '@/server/http/rateLimit';
 
 /**
  * POST /api/auth/reset-password

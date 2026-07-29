@@ -19,7 +19,7 @@ import {
   VerdictBadge,
   tableNumeric,
   type SortDir,
-} from '@/components/ui';
+} from '@/client/components/ui';
 
 interface HistoryRecord {
   historyId: string;

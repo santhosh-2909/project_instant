@@ -11,6 +11,14 @@ export default defineConfig({
   resolve: {
     alias: {
       '@': path.resolve(process.cwd(), 'src'),
+      /*
+       * `server-only` throws unless it is resolved in a React Server Component
+       * graph, which Vitest is not. The package ships empty.js for exactly this
+       * case — Next.js still enforces the real guard at build time, so aliasing
+       * it here weakens nothing. The architecture test in tests/architecture.test.ts
+       * checks the same boundary independently.
+       */
+      'server-only': path.resolve(process.cwd(), 'node_modules/server-only/empty.js'),
     },
   },
   test: {

@@ -1,6 +1,6 @@
 import '@testing-library/jest-dom/vitest';
 import { afterEach, beforeEach, vi } from 'vitest';
-import { resetRateLimits } from '@/lib/rateLimit';
+import { resetRateLimits } from '@/server/http/rateLimit';
 
 // next/navigation is unavailable outside the Next runtime; components under
 // test only need router methods to exist.

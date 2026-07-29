@@ -10,12 +10,12 @@
  */
 
 import { NextResponse } from 'next/server';
-import { getAuthUser } from '@/lib/auth';
-import { decide } from '@/lib/decisionEngine';
-import { assess } from '@/lib/llm';
-import { retrieveEvidence } from '@/lib/retrieval';
-import { providerStatus } from '@/lib/env';
-import { consume, clientKey, rateLimitHeaders, LIMITS } from '@/lib/rateLimit';
+import { getAuthUser } from '@/server/auth/session';
+import { decide } from '@/server/verification/decisionEngine';
+import { assess } from '@/server/verification/llm';
+import { retrieveEvidence } from '@/server/verification/retrieval';
+import { providerStatus } from '@/server/config/env';
+import { consume, clientKey, rateLimitHeaders, LIMITS } from '@/server/http/rateLimit';
 
 /** PRD §10: claim text non-empty, max length 10,000 characters. */
 const MAX_CLAIM_LENGTH = 10_000;

@@ -1,9 +1,9 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { consume, clientKey, rateLimitHeaders, resetRateLimits, LIMITS } from '@/lib/rateLimit';
-import { hashSecurityAnswer, normaliseSecurityAnswer, verifySecurityAnswer } from '@/lib/securityAnswer';
-import { requireSecret, optionalKey } from '@/lib/env';
-import { mentionsUnretrievedSource, parseAssessment } from '@/lib/llm';
-import type { RetrievedEvidence } from '@/lib/retrieval';
+import { consume, clientKey, rateLimitHeaders, resetRateLimits, LIMITS } from '@/server/http/rateLimit';
+import { hashSecurityAnswer, normaliseSecurityAnswer, verifySecurityAnswer } from '@/server/auth/securityAnswer';
+import { requireSecret, optionalKey } from '@/server/config/env';
+import { mentionsUnretrievedSource, parseAssessment } from '@/server/verification/llm';
+import type { RetrievedEvidence } from '@/server/verification/retrieval';
 
 describe('TC-SEC-01 env fail-fast (fixes S-1)', () => {
   const original = process.env.JWT_SECRET;

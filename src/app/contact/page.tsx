@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import { Card, CardBody, CardHeader } from '@/components/ui';
+import { Card, CardBody, CardHeader } from '@/client/components/ui';
 
 export const metadata: Metadata = {
   title: 'Contact',

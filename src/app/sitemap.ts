@@ -1,5 +1,5 @@
 import type { MetadataRoute } from 'next';
-import { siteUrl } from '@/lib/siteUrl';
+import { siteUrl } from '@/shared/siteUrl';
 
 /** Only publicly meaningful pages — authenticated views are excluded. */
 const ROUTES: Array<{ path: string; priority: number; changeFrequency: MetadataRoute.Sitemap[number]['changeFrequency'] }> = [

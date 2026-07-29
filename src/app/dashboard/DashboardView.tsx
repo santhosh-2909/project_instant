@@ -12,7 +12,7 @@ import {
   Meter,
   Skeleton,
   Stat,
-} from '@/components/ui';
+} from '@/client/components/ui';
 import s from './dashboard.module.css';
 
 interface Analytics {

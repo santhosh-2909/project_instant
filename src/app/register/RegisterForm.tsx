@@ -3,7 +3,7 @@
 import * as React from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { Alert, Button, Card, CardBody, CardHeader, Field, Input, Select } from '@/components/ui';
+import { Alert, Button, Card, CardBody, CardHeader, Field, Input, Select } from '@/client/components/ui';
 
 interface Reference {
   countries: Array<{ countryId: number; countryName: string }>;

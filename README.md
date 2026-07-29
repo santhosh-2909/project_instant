@@ -69,7 +69,7 @@ node -e "console.log(require('crypto').randomBytes(48).toString('base64url'))"
 npm run dev         # dev server
 npm run build       # production build
 npm start           # serve the build
-npm test            # 203 tests, single run
+npm test            # 213 tests, single run
 npm run test:watch
 npm run typecheck   # tsc --noEmit
 npm run lint        # oxlint
@@ -120,40 +120,64 @@ Guarantees enforced in code, each covered by tests:
 
 ## Project structure
 
+The codebase is split three ways, and the split is **enforced**, not just
+documented — see `tests/architecture.test.ts` and the `server-only` guards.
+
 ```
 src/
-  app/
-    layout.tsx            root layout: fonts, theme, header/footer
-    globals.css           THE design system — every token lives here
-    page.tsx              home
-    verify/               verification workspace
-    history/              verification archive (auth)
-    dashboard/            analytics (auth)
-    login/ register/ forgot-password/
-    about/ contact/
-    api/
-      auth/{login,register,reset-password}
-      news/{check,verify,fetch,sources}
-      analytics/ history/ evidence/ feedback/ reports/ profile/
-  components/
-    ui/                   design-system primitives — Button, Card, Field, Meter, Table…
-    layout/               header, footer, theme provider
-    verify/               composer, progress, verdict report, evidence cards
-  lib/
-    decisionEngine.ts     signal fusion → verdict + confidence
-    retrieval.ts          real evidence retrieval, similarity, ranking
-    llm.ts                constrained reasoning layer
-    newsHeuristics.ts     Layer 1 linguistic scoring
-    providers/            googleNews, wikipedia, officeHolder, wikimediaClient
-    embeddings.ts         Sentence Transformers semantic similarity
-    textMatch.ts          lexical similarity, publisher reliability, entities
-    rateLimit.ts  env.ts  securityAnswer.ts  auth.ts  db.ts  siteUrl.ts
-    pdf.ts  exportReport.ts   real PDF/CSV generation
-prisma/
-  schema.prisma           25 entities, matching PRD §15
-  seed.ts
-tests/                    203 tests
+  server/          BACKEND — never reaches the browser
+    config/env.ts            environment access with fail-fast validation
+    data/db.ts               Prisma client
+    auth/                    session signing/verification, security answers
+    http/rateLimit.ts        fixed-window limiter
+    verification/            THE PIPELINE
+      decisionEngine.ts        signal fusion -> verdict + confidence
+      retrieval.ts             orchestrates providers, dedupe, ranking
+      embeddings.ts            Sentence Transformers semantic similarity
+      llm.ts                   constrained reasoning layer
+      heuristics.ts            linguistic scoring
+      providers/               googleNews, wikipedia, officeHolder, wikimediaClient
+
+  shared/          THE CONTRACT — safe for both sides
+    types.ts                 Verdict, RetrievedEvidence, VerificationReport…
+    textMatch.ts             pure text utilities (no I/O, no config)
+    siteUrl.ts               canonical URL resolution
+
+  client/          FRONTEND — browser code
+    components/ui/           design-system primitives
+    components/layout/       header, footer, theme
+    components/verify/       composer, progress, verdict report, evidence cards
+    lib/                     exportReport, pdf, recentClaims (DOM/Blob APIs)
+
+  app/             ROUTES ONLY — thin
+    api/**/route.ts          backend entry points
+    **/page.tsx              frontend entry points
 ```
+
+### Why the split is enforced
+
+Dependencies flow in one direction only:
+
+```
+client  ->  shared  <-  server
+```
+
+Neither side may import the other. Three mechanisms hold that in place:
+
+1. **`import 'server-only'`** at the top of every module in `src/server`. If a
+   client component imports one — directly or transitively — the build fails.
+2. **`tests/architecture.test.ts`** independently asserts the boundary in both
+   directions, that `shared/` has no dependencies at all, and that nothing
+   still imports the retired `@/lib` layer.
+3. **Types are declared in `shared/`** and imported *by* the server, never
+   re-exported *from* it. Direction matters: the UI used to import its types
+   from the retrieval module, which is what dragged the backend into the
+   browser bundle in the first place.
+
+This is not hypothetical tidying. Before the split, the client bundle contained
+`onnxruntime`, `huggingface` and internal provider code, because one component
+imported a single helper from `@/server/verification/retrieval`. Removing that
+edge cut the client chunks from **1.3 MB to 768 KB**.
 
 ### Design system
 
@@ -173,7 +197,7 @@ from [`src/components/ui`](src/components/ui). Do not hand-roll these.
 npm test
 ```
 
-203 tests across seven suites:
+213 tests across eight suites:
 
 | Suite | Covers |
 |---|---|
@@ -184,6 +208,7 @@ npm test
 | `ui.test.tsx` | every primitive, including ARIA wiring and focus/disabled states |
 | `verifyFlow.test.tsx` | the full verify → report → export journey against a mocked API |
 | `embeddings.test.ts` | cosine maths, calibration, hybrid fallback, and the real model end-to-end |
+| `architecture.test.ts` | the frontend/backend boundary, in both directions |
 
 Tests marked `REGRESSION` pin behaviour that was previously broken — they exist so old defects cannot return.
 

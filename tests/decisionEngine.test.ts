@@ -9,8 +9,8 @@ import {
   llmSignal,
   referenceSignal,
   type SignalContribution,
-} from '@/lib/decisionEngine';
-import type { RetrievalOutcome, RetrievedEvidence } from '@/lib/retrieval';
+} from '@/server/verification/decisionEngine';
+import type { RetrievalOutcome, RetrievedEvidence } from '@/server/verification/retrieval';
 
 function evidence(overrides: Partial<RetrievedEvidence> = {}): RetrievedEvidence {
   return {

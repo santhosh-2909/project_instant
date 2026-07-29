@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
-import { buildEvidenceCsv, buildReportPdf, csvCell } from '@/lib/exportReport';
-import { PdfDocument, wrapText } from '@/lib/pdf';
-import { evidenceQuality, recommendationFor, type VerificationReport } from '@/lib/types';
+import { buildEvidenceCsv, buildReportPdf, csvCell } from '@/client/lib/exportReport';
+import { PdfDocument, wrapText } from '@/client/lib/pdf';
+import { evidenceQuality, recommendationFor, type VerificationReport } from '@/shared/types';
 
 const REPORT: VerificationReport = {
   claim: { title: 'Government announces free electricity for all households', url: 'https://x.test/a', characters: 120 },

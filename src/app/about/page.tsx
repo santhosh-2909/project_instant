@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import { Button, Card, CardBody, CardHeader } from '@/components/ui';
+import { Button, Card, CardBody, CardHeader } from '@/client/components/ui';
 
 export const metadata: Metadata = {
   title: 'How it works',

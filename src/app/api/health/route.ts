@@ -10,8 +10,8 @@
  */
 
 import { NextResponse } from 'next/server';
-import { providerStatus } from '@/lib/env';
-import { embeddingStatus } from '@/lib/embeddings';
+import { providerStatus } from '@/server/config/env';
+import { embeddingStatus } from '@/server/verification/embeddings';
 
 export const dynamic = 'force-dynamic';
 

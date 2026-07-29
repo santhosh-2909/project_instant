@@ -14,8 +14,8 @@ import {
   hybridSimilarity,
   rescaleCosine,
   scoreCandidates,
-} from '@/lib/embeddings';
-import { similarity as lexicalSimilarity } from '@/lib/textMatch';
+} from '@/server/verification/embeddings';
+import { similarity as lexicalSimilarity } from '@/shared/textMatch';
 
 /**
  * The model download is slow and network-dependent, so the deterministic maths

@@ -1,9 +1,9 @@
 import type { Metadata, Viewport } from 'next';
 import { Inter, Source_Serif_4, JetBrains_Mono } from 'next/font/google';
-import { SiteHeader } from '@/components/layout/SiteHeader';
-import { SiteFooter } from '@/components/layout/SiteFooter';
-import { ThemeProvider } from '@/components/layout/ThemeProvider';
-import { siteUrl } from '@/lib/siteUrl';
+import { SiteHeader } from '@/client/components/layout/SiteHeader';
+import { SiteFooter } from '@/client/components/layout/SiteFooter';
+import { ThemeProvider } from '@/client/components/layout/ThemeProvider';
+import { siteUrl } from '@/shared/siteUrl';
 import './globals.css';
 
 const sans = Inter({

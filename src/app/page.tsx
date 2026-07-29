@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { Badge, Button } from '@/components/ui';
+import { Badge, Button } from '@/client/components/ui';
 import s from './home.module.css';
 
 const STEPS = [
