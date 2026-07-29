@@ -37,6 +37,40 @@ const nextConfig: NextConfig = {
   // runtime. Bundling it breaks both, so it stays external to the server build.
   serverExternalPackages: ['@huggingface/transformers', 'onnxruntime-node'],
 
+  /*
+   * onnxruntime-node ships prebuilt binaries for every platform: linux 53 MB,
+   * win32 124 MB, darwin 35 MB. File tracing would copy all 211 MB into every
+   * serverless function, and Vercel caps a function at 250 MB uncompressed —
+   * so the deploy fails on size even though only the Linux binary is ever used.
+   *
+   * Excluding the two irrelevant platforms drops the runtime to ~53 MB. Local
+   * development is unaffected: this only shapes the traced production bundle,
+   * not node_modules on your machine.
+   */
+  outputFileTracingExcludes: {
+    '/*': [
+      'node_modules/onnxruntime-node/bin/napi-v6/win32/**',
+      'node_modules/onnxruntime-node/bin/napi-v6/darwin/**',
+      // Test-only; never reachable at runtime but large if traced.
+      'node_modules/playwright/**',
+      'node_modules/@img/**',
+    ],
+  },
+
+  /*
+   * File tracing follows static imports, but onnxruntime-node loads its native
+   * `.node` binary through a computed require that the tracer cannot see. Left
+   * alone, the runtime is deployed without its engine, the model fails to load,
+   * and scoring silently degrades to lexical — the failure is invisible because
+   * the fallback is deliberate.
+   *
+   * Scoped to the one route that runs the model, so the other functions are not
+   * each carrying 53 MB they never execute.
+   */
+  outputFileTracingIncludes: {
+    '/api/news/check': ['node_modules/onnxruntime-node/bin/napi-v6/linux/**'],
+  },
+
   async headers() {
     return [{ source: '/:path*', headers: securityHeaders }];
   },

@@ -265,6 +265,27 @@ DATABASE_URL="<production-url>" npx prisma db push
 DATABASE_URL="<production-url>" npm run db:seed
 ```
 
+### Build constraints on Vercel
+
+Two things in `next.config.ts` exist purely to make the Vercel deploy work, and
+should not be removed:
+
+- **Platform-specific dependencies must be optional.** `oxlint` and `rolldown`
+  ship Windows-only native bindings. Declared as regular `devDependencies`, npm
+  fails the whole install on Vercel's Linux builders with `EBADPLATFORM`. They
+  live in `optionalDependencies`, which npm skips when the platform does not
+  match.
+- **`onnxruntime-node` ships binaries for every platform** — linux 53 MB, win32
+  124 MB, darwin 35 MB. Tracing all 211 MB into a function exceeds Vercel's
+  250 MB limit, so `outputFileTracingExcludes` drops win32 and darwin. The
+  Linux binary is loaded through a computed require the tracer cannot follow,
+  so `outputFileTracingIncludes` adds it back for `/api/news/check` only. The
+  traced function is ~84 MB.
+
+If the semantic layer ever reports `loaded: false` on a deployment, check
+`/api/health` first — scoring falls back to lexical silently by design, so the
+symptom is quietly weaker matching rather than an error.
+
 ### Serverless behaviour you should know about
 
 - **Rate limiting is per-instance.** Each warm Vercel instance keeps its own
