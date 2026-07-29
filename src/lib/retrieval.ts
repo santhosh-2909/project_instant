@@ -22,6 +22,7 @@ import type { RetrievedEvidence, RetrievalOutcome, EvidenceStance } from './retr
 import { searchGoogleNews } from './providers/googleNews';
 import { searchWikipedia, searchWikidata } from './providers/wikipedia';
 import { checkOfficeHolder } from './providers/officeHolder';
+import { scoreCandidates, warmUp } from './embeddings';
 
 // Re-exported so existing imports from '@/lib/retrieval' keep working.
 export type { RetrievedEvidence, RetrievalOutcome, EvidenceStance } from './retrievalTypes';
@@ -227,6 +228,8 @@ interface ProviderRun {
 }
 
 export async function retrieveEvidence(claim: string, limit = 10): Promise<RetrievalOutcome> {
+  warmUp(); // begin loading the sentence-transformer without blocking this request
+
   const query = buildQuery(claim, 8);
 
   const runs: ProviderRun[] = [
@@ -269,12 +272,44 @@ export async function retrieveEvidence(claim: string, limit = 10): Promise<Retri
     collected.push(...result);
   });
 
-  const relevant = collected.filter((item) => item.similarity >= MIN_SIMILARITY);
+  // Re-score with the semantic layer before filtering, so a paraphrase that
+  // shares no distinctive wording is not discarded as irrelevant.
+  const rescored = await applySemanticScoring(claim, dedupe(collected));
+
+  const relevant = rescored.filter((item) => item.similarity >= MIN_SIMILARITY);
 
   return {
-    evidence: rank(dedupe(relevant)).slice(0, limit),
+    evidence: rank(relevant).slice(0, limit),
     providersQueried,
     providersFailed,
     offline: providersQueried.length === 0,
   };
+}
+
+/**
+ * Upgrades each item's `similarity` from lexical to hybrid lexical+semantic.
+ *
+ * Items whose stance a provider asserted directly (a fact-check rating, a
+ * structured incumbency record) keep their pinned similarity — those are
+ * authoritative and must not be re-ranked below ordinary coverage.
+ */
+async function applySemanticScoring(claim: string, items: RetrievedEvidence[]): Promise<RetrievedEvidence[]> {
+  if (items.length === 0) return items;
+
+  const AUTHORITATIVE = 0.9;
+  const scorable = items.filter((item) => item.similarity < AUTHORITATIVE);
+  if (scorable.length === 0) return items;
+
+  const scores = await scoreCandidates(
+    claim,
+    scorable.map((item) => `${item.title}. ${item.snippet}`)
+  );
+
+  const updated = new Map<RetrievedEvidence, number>();
+  scorable.forEach((item, index) => updated.set(item, scores[index].score));
+
+  return items.map((item) => {
+    const next = updated.get(item);
+    return next === undefined ? item : { ...item, similarity: next };
+  });
 }

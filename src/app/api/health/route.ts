@@ -11,6 +11,7 @@
 
 import { NextResponse } from 'next/server';
 import { providerStatus } from '@/lib/env';
+import { embeddingStatus } from '@/lib/embeddings';
 
 export const dynamic = 'force-dynamic';
 
@@ -41,6 +42,7 @@ export async function GET() {
       status: healthy ? (degraded.length > 0 ? 'degraded' : 'ok') : 'unhealthy',
       checks,
       providers,
+      embeddings: embeddingStatus(),
       degraded,
       timestamp: new Date().toISOString(),
     },

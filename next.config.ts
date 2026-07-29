@@ -33,6 +33,10 @@ const securityHeaders = [
 const nextConfig: NextConfig = {
   allowedDevOrigins: ['127.0.0.1', 'localhost'],
 
+  // Transformers.js loads a native ONNX runtime and downloads model weights at
+  // runtime. Bundling it breaks both, so it stays external to the server build.
+  serverExternalPackages: ['@huggingface/transformers', 'onnxruntime-node'],
+
   async headers() {
     return [{ source: '/:path*', headers: securityHeaders }];
   },

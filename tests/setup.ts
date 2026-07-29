@@ -1,5 +1,4 @@
 import '@testing-library/jest-dom/vitest';
-import { cleanup } from '@testing-library/react';
 import { afterEach, beforeEach, vi } from 'vitest';
 import { resetRateLimits } from '@/lib/rateLimit';
 
@@ -11,12 +10,26 @@ vi.mock('next/navigation', () => ({
   useSearchParams: () => new URLSearchParams(),
 }));
 
+/**
+ * Suites that need a native runtime — the sentence-transformer runs on ONNX,
+ * which cannot load in jsdom — opt into the Node environment with a
+ * `@vitest-environment node` docblock. There is no DOM there, so the
+ * browser-only cleanup below is skipped rather than crashing the whole file.
+ */
+const hasDom = typeof window !== 'undefined';
+
+async function cleanupDom() {
+  if (!hasDom) return;
+  const { cleanup } = await import('@testing-library/react');
+  cleanup();
+}
+
 beforeEach(() => {
-  localStorage.clear();
+  if (hasDom) localStorage.clear();
   resetRateLimits();
 });
 
-afterEach(() => {
-  cleanup();
-  localStorage.clear();
+afterEach(async () => {
+  await cleanupDom();
+  if (hasDom) localStorage.clear();
 });

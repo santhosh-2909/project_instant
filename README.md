@@ -18,6 +18,7 @@ report came back from a real request to a real provider and links to the origina
 | Styling | One design system — CSS custom properties + CSS Modules |
 | Auth | JWT in an httpOnly cookie, bcrypt, RBAC |
 | Evidence | Google News, Wikipedia, Wikidata (no key) + Google Fact Check Tools, NewsAPI (optional) |
+| Semantic layer | Sentence Transformers (`all-MiniLM-L6-v2`) via Transformers.js — runs in-process, no API |
 | Reasoning | Groq (constrained to retrieved passages) |
 | Tests | Vitest + Testing Library |
 
@@ -50,6 +51,8 @@ npm run db:seed                # reference data: roles, statuses, thresholds…
 | `GOOGLE_FACT_CHECK_API_KEY` | recommended | Published fact-checker rulings — the heaviest-weighted evidence |
 | `NEWS_API_KEY` | optional | Extra archive depth beyond Google News |
 | `GROQ_API_KEY` | optional | Reasoning layer (6% of the decision) |
+| `EMBEDDING_MODEL` | optional | Defaults to `Xenova/all-MiniLM-L6-v2`. Set to `Xenova/paraphrase-multilingual-MiniLM-L12-v2` for Indic-language support (~5x larger) |
+| `DISABLE_EMBEDDINGS` | optional | Set to `1` to force lexical-only matching |
 
 Generate a secret with:
 
@@ -66,7 +69,7 @@ node -e "console.log(require('crypto').randomBytes(48).toString('base64url'))"
 npm run dev         # dev server
 npm run build       # production build
 npm start           # serve the build
-npm test            # 184 tests, single run
+npm test            # 203 tests, single run
 npm run test:watch
 npm run typecheck   # tsc --noEmit
 npm run lint        # oxlint
@@ -86,6 +89,15 @@ claim
  ├─ Layer 2c Reference sources          20%   Wikipedia + Wikidata current records
  ├─ Layer 3  Model reasoning             6%   reads ONLY the retrieved passages
  └─ Decision Engine -> Real | Fake | Uncertain + confidence + per-signal breakdown
+
+Relevance scoring is **hybrid**: every retrieved item is scored both lexically
+(weighted Jaccard) and semantically (Sentence Transformers cosine), and the
+higher score wins. The two fail in opposite directions — lexical is precise about
+named entities but blind to paraphrase; semantic catches paraphrase but is fuzzy
+about names — so neither is allowed to veto the other.
+
+Measured on "Vijay is the Chief Minister of Tamil Nadu" vs "The head of the Tamil
+Nadu government is Vijay": lexical ~0.3, semantic ~0.91.
 
 Plus a structured incumbency check: for "X is the <office> of Y" claims, Wikidata's
 current, dated record is compared against the person named. This is the one case
@@ -133,13 +145,14 @@ src/
     llm.ts                constrained reasoning layer
     newsHeuristics.ts     Layer 1 linguistic scoring
     providers/            googleNews, wikipedia, officeHolder, wikimediaClient
-    textMatch.ts          similarity, publisher reliability, entity extraction
+    embeddings.ts         Sentence Transformers semantic similarity
+    textMatch.ts          lexical similarity, publisher reliability, entities
     rateLimit.ts  env.ts  securityAnswer.ts  auth.ts  db.ts  siteUrl.ts
     pdf.ts  exportReport.ts   real PDF/CSV generation
 prisma/
   schema.prisma           25 entities, matching PRD §15
   seed.ts
-tests/                    184 tests
+tests/                    203 tests
 ```
 
 ### Design system
@@ -160,7 +173,7 @@ from [`src/components/ui`](src/components/ui). Do not hand-roll these.
 npm test
 ```
 
-184 tests across six suites:
+203 tests across seven suites:
 
 | Suite | Covers |
 |---|---|
@@ -170,6 +183,7 @@ npm test
 | `export.test.ts` | CSV escaping and formula-injection guards, real PDF byte output, pagination |
 | `ui.test.tsx` | every primitive, including ARIA wiring and focus/disabled states |
 | `verifyFlow.test.tsx` | the full verify → report → export journey against a mocked API |
+| `embeddings.test.ts` | cosine maths, calibration, hybrid fallback, and the real model end-to-end |
 
 Tests marked `REGRESSION` pin behaviour that was previously broken — they exist so old defects cannot return.
 
@@ -271,9 +285,14 @@ DATABASE_URL="<production-url>" npm run db:seed
 - **Not a replacement for a fact-checker.** This is a triage tool that shows its working.
 - **English-language retrieval.** The PRD targets 22 Indian languages; providers are currently queried in
   English only.
-- **No vector search yet.** Matching is lexical (weighted Jaccard), not embedding-based. The structured
-  incumbency check in `src/lib/providers/officeHolder.ts` covers the one case where lexical matching is
-  actively misleading — "X is the current <office> of Y" — but other semantic contradictions are not caught.
+- **Semantic *similarity*, not semantic *contradiction*.** Sentence Transformers scores how related two
+  texts are, not whether one refutes the other. The structured incumbency check covers the case where this
+  matters most — "X is the current <office> of Y" — but other contradictions are not detected.
+- **No vector database.** Embeddings are computed per request and cached in memory; there is no persistent
+  index, so evidence cannot be searched by vector at scale. `pgvector` on the existing Postgres is the
+  natural next step.
+- **Cold start cost.** The first request on a fresh instance downloads the model (~23 MB) and takes several
+  seconds; scoring falls back to lexical until it is ready, so no request ever blocks on it.
 - **Upstream throttling degrades to `Uncertain`.** When Wikimedia rate-limits the authoritative lookup for an
   office claim, the verdict becomes `Uncertain` with an explanation rather than falling back to news coverage,
   which cannot distinguish a current office holder from a former one. Retrying usually succeeds.
