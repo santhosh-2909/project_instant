@@ -31,6 +31,7 @@ import { searchGoogleNews } from '@/server/verification/providers/googleNews';
 import { searchWikipedia, searchWikidata } from '@/server/verification/providers/wikipedia';
 import { checkOfficeHolder } from '@/server/verification/providers/officeHolder';
 import { searchTavily, shouldEscalate } from '@/server/verification/providers/tavily';
+import { isOpen, recordFailure, recordSuccess } from '@/server/verification/circuitBreaker';
 import { scoreCandidates, warmUp } from '@/server/verification/embeddings';
 
 // Re-exported so existing imports from '@/server/verification/retrieval' keep working.
@@ -232,7 +233,8 @@ export function rank(items: RetrievedEvidence[]): RetrievedEvidence[] {
 
 interface ProviderRun {
   id: string;
-  run: Promise<RetrievedEvidence[] | null>;
+  /** Lazy: a provider whose circuit is open must never issue its request. */
+  run: () => Promise<RetrievedEvidence[] | null>;
   /** Keyless providers are always expected to answer. */
   configured: boolean;
 }
@@ -244,16 +246,16 @@ export async function retrieveEvidence(claim: string, limit = 10): Promise<Retri
 
   const runs: ProviderRun[] = [
     // Always available — no key required.
-    { id: 'googlenews', run: searchGoogleNews(claim, query), configured: true },
-    { id: 'wikipedia', run: searchWikipedia(claim, query), configured: true },
-    { id: 'wikidata', run: searchWikidata(claim), configured: true },
+    { id: 'googlenews', run: () => searchGoogleNews(claim, query), configured: true },
+    { id: 'wikipedia', run: () => searchWikipedia(claim, query), configured: true },
+    { id: 'wikidata', run: () => searchWikidata(claim), configured: true },
     // Structured incumbency check — only fires for "X is the <office> of Y".
     // A lookup failure is reported rather than swallowed: without it the verdict
     // would silently fall back to lexical matching, which cannot tell a current
     // office holder from a former one.
     {
       id: 'wikidata-office',
-      run: checkOfficeHolder(claim).then((result) => {
+      run: () => checkOfficeHolder(claim).then((result) => {
         if (result.status === 'checked') return [result.evidence];
         if (result.status === 'lookup-failed') throw new Error(`office check failed at ${result.stage}`);
         return []; // not an office claim — nothing to report
@@ -261,26 +263,41 @@ export async function retrieveEvidence(claim: string, limit = 10): Promise<Retri
       configured: true,
     },
     // Optional upgrades.
-    { id: 'factcheck', run: searchFactCheck(claim), configured: optionalKey('GOOGLE_FACT_CHECK_API_KEY') !== null },
-    { id: 'newsapi', run: searchNewsApi(claim), configured: optionalKey('NEWS_API_KEY') !== null },
+    { id: 'factcheck', run: () => searchFactCheck(claim), configured: optionalKey('GOOGLE_FACT_CHECK_API_KEY') !== null },
+    { id: 'newsapi', run: () => searchNewsApi(claim), configured: optionalKey('NEWS_API_KEY') !== null },
   ];
 
-  const settled = await Promise.all(runs.map((entry) => entry.run.catch(() => null)));
+  /*
+   * Skip providers whose circuit is open. A provider that keeps failing — a bad
+   * key, an outage — otherwise adds its full timeout to every request, and that
+   * latency is charged to the whole pipeline, not just to itself.
+   */
+  const active = runs.filter((entry) => !isOpen(entry.id));
+  const skipped = runs.filter((entry) => isOpen(entry.id));
+
+  const settled = await Promise.all(active.map((entry) => entry.run().catch(() => null)));
 
   const providersQueried: string[] = [];
   const providersFailed: string[] = [];
   const collected: RetrievedEvidence[] = [];
 
   settled.forEach((result, index) => {
-    const { id, configured } = runs[index];
+    const { id, configured } = active[index];
     if (result === null) {
       // A null from an unconfigured optional provider is expected, not a failure.
-      if (configured) providersFailed.push(id);
+      if (configured) {
+        providersFailed.push(id);
+        recordFailure(id);
+      }
       return;
     }
+    recordSuccess(id);
     providersQueried.push(id);
     collected.push(...result);
   });
+
+  // Reported so a skipped provider is visible rather than silently missing.
+  for (const entry of skipped) providersFailed.push(`${entry.id} (circuit open)`);
 
   /*
    * Tavily runs last and only if needed. Its free tier is 1,000 searches a

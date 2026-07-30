@@ -70,7 +70,15 @@ export function wikimediaCacheSize() {
 
 /* ------------------------------------------------------- Concurrency gate */
 
-const MAX_CONCURRENT = 2;
+/*
+ * A single claim issues up to eight Wikimedia calls: two for the article
+ * search, up to three entity lookups, and three sequential office-holder
+ * lookups. At two slots those serialise into a queue long enough to blow the
+ * retrieval budget, which shows up as a verdict of "Uncertain" with no sources
+ * at all. Four slots keeps the burst small enough to avoid throttling while
+ * halving the queue depth.
+ */
+const MAX_CONCURRENT = 4;
 let active = 0;
 const queue: Array<() => void> = [];
 

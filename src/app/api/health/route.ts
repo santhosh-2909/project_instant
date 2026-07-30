@@ -12,17 +12,25 @@
 import { NextResponse } from 'next/server';
 import { providerStatus } from '@/server/config/env';
 import { embeddingStatus } from '@/server/verification/embeddings';
-import { probeGroq } from '@/server/verification/groqClient';
+import { probeAllProviders } from '@/server/verification/providerProbe';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET(request: Request) {
   const providers = providerStatus();
 
-  // ?probe=1 actually calls Groq, so a newly-added key can be confirmed
-  // end to end rather than merely "present in the environment".
+  /*
+   * ?probe=1 makes a real request to every keyed provider.
+   *
+   * "Configured" only means a key exists in the environment. Two keys here
+   * looked configured and were not — a GROQ_MODEL missing one character, and a
+   * fact-check key that was not a Google API key at all. Both silently removed
+   * a provider from every verdict. This turns that into a five-second check.
+   *
+   * Costs one Tavily search from the monthly quota when Tavily is configured.
+   */
   const probe = new URL(request.url).searchParams.get('probe') === '1';
-  const groq = probe ? await probeGroq() : null;
+  const probes = probe ? await probeAllProviders() : null;
 
   // Keyless providers always work, so the verification path is always live.
   // The database is optional — only accounts, history and analytics need it.
@@ -49,7 +57,7 @@ export async function GET(request: Request) {
       checks,
       providers,
       embeddings: embeddingStatus(),
-      ...(groq ? { groq } : {}),
+      ...(probes ? { probes } : {}),
       degraded,
       timestamp: new Date().toISOString(),
     },

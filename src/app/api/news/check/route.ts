@@ -33,11 +33,11 @@ const MAX_CLAIM_LENGTH = 10_000;
  *   • reasoning models (gpt-oss, qwen3) think before answering, so a verdict
  *     call and a narrative call run several seconds each.
  *
- * The ceiling is therefore 20s, comfortably inside the 30s maxDuration. Warm
+ * The ceiling is therefore 25s, inside the 30s maxDuration. Warm
  * caches and non-reasoning models land far below it — the Wikimedia cache alone
  * takes repeat lookups under a second.
  */
-const PIPELINE_BUDGET_MS = 20_000;
+const PIPELINE_BUDGET_MS = 25_000;
 
 /** Reasoning models need seconds, not milliseconds, to produce a paragraph. */
 const NARRATIVE_BUDGET_MS = 10_000;
@@ -101,7 +101,7 @@ export async function POST(request: Request) {
 
     // --- Layer 2: real retrieval -------------------------------------------
     const configured = providerStatus();
-    const retrieval = await withBudget(retrieveEvidence(claim), Math.min(6_000, PIPELINE_BUDGET_MS * 0.4), {
+    const retrieval = await withBudget(retrieveEvidence(claim), Math.min(11_000, PIPELINE_BUDGET_MS * 0.45), {
       evidence: [],
       providersQueried: [],
       providersFailed: ['timeout'],
