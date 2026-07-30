@@ -96,9 +96,30 @@ describe('TC-NAR-04 Groq model selection', () => {
     expect(models[0]).toContain('llama');
   });
 
-  it('uses only the pinned model when GROQ_MODEL is set', () => {
+  it('tries the pinned model first but keeps the chain behind it', () => {
     process.env.GROQ_MODEL = 'llama-3.3-70b-versatile';
-    expect(configuredModels()).toEqual(['llama-3.3-70b-versatile']);
+    const models = configuredModels();
+
+    expect(models[0]).toBe('llama-3.3-70b-versatile');
+    // A pinned id is a preference, not an exclusive. It used to be exclusive,
+    // and one typo in .env ("openai/gpt-oss-120" for "…-120b") silently
+    // disabled the whole AI layer. A bad value must cost the preferred model,
+    // not the feature.
+    expect(models.length).toBeGreaterThan(1);
+
     delete process.env.GROQ_MODEL;
+  });
+
+  it('does not list the pinned model twice when it is already in the chain', () => {
+    process.env.GROQ_MODEL = 'llama-3.1-8b-instant';
+    const models = configuredModels();
+    expect(models.filter((m) => m === 'llama-3.1-8b-instant')).toHaveLength(1);
+    expect(models[0]).toBe('llama-3.1-8b-instant');
+    delete process.env.GROQ_MODEL;
+  });
+
+  it('includes the reasoning models that need extra token headroom', () => {
+    delete process.env.GROQ_MODEL;
+    expect(configuredModels().some((m) => /gpt-oss/.test(m))).toBe(true);
   });
 });

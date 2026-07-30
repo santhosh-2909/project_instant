@@ -24,13 +24,23 @@ const MAX_CLAIM_LENGTH = 10_000;
 /**
  * Hard end-to-end budget.
  *
- * The PRD targets p95 < 5s. In practice the authoritative incumbency lookup
- * needs three sequential Wikimedia round-trips on a cold cache, and cutting it
- * short is not a neutral act — it turns a decisive answer into "Uncertain".
- * Correctness wins, so the ceiling is 8s; warm-cache responses land well under
- * a second (see the cache in lib/providers/wikimediaClient.ts).
+ * The PRD targets p95 < 5s. Two things push past it, and cutting either short
+ * costs real quality rather than just latency:
+ *
+ *   • the authoritative incumbency lookup needs three sequential Wikimedia
+ *     round-trips on a cold cache, and truncating it turns a decisive answer
+ *     into "Uncertain";
+ *   • reasoning models (gpt-oss, qwen3) think before answering, so a verdict
+ *     call and a narrative call run several seconds each.
+ *
+ * The ceiling is therefore 20s, comfortably inside the 30s maxDuration. Warm
+ * caches and non-reasoning models land far below it — the Wikimedia cache alone
+ * takes repeat lookups under a second.
  */
-const PIPELINE_BUDGET_MS = 8_000;
+const PIPELINE_BUDGET_MS = 20_000;
+
+/** Reasoning models need seconds, not milliseconds, to produce a paragraph. */
+const NARRATIVE_BUDGET_MS = 10_000;
 
 /**
  * Vercel serverless configuration.
@@ -91,7 +101,7 @@ export async function POST(request: Request) {
 
     // --- Layer 2: real retrieval -------------------------------------------
     const configured = providerStatus();
-    const retrieval = await withBudget(retrieveEvidence(claim), PIPELINE_BUDGET_MS * 0.8, {
+    const retrieval = await withBudget(retrieveEvidence(claim), Math.min(6_000, PIPELINE_BUDGET_MS * 0.4), {
       evidence: [],
       providersQueried: [],
       providersFailed: ['timeout'],
@@ -101,7 +111,9 @@ export async function POST(request: Request) {
     // --- Layer 3: constrained reasoning ------------------------------------
     const remaining = PIPELINE_BUDGET_MS - (Date.now() - startedAt);
     const llm =
-      remaining > 800 ? await withBudget(assess(claim, retrieval.evidence, remaining), remaining, null) : null;
+      remaining > 2000
+        ? await withBudget(assess(claim, retrieval.evidence, Math.min(8_000, remaining)), remaining, null)
+        : null;
 
     // --- Fusion -------------------------------------------------------------
     const decision = decide(title || content.slice(0, 120), content || title, retrieval, llm);
@@ -115,14 +127,14 @@ export async function POST(request: Request) {
      */
     const budgetLeft = PIPELINE_BUDGET_MS - (Date.now() - startedAt);
     const narrative =
-      budgetLeft > 1200
+      budgetLeft > 2000
         ? await generateNarrative(
             claim,
             decision.verdict,
             decision.confidence,
             decision.signals,
             decision.evidence,
-            Math.min(5000, budgetLeft)
+            Math.min(NARRATIVE_BUDGET_MS, budgetLeft)
           )
         : null;
 

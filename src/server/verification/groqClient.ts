@@ -25,14 +25,22 @@ import { optionalKey } from '@/server/config/env';
 const MODEL_CHAIN = [
   'llama-3.1-8b-instant',
   'llama-3.3-70b-versatile',
-  'llama3-8b-8192',
-  'mixtral-8x7b-32768',
-  'gemma2-9b-it',
+  'openai/gpt-oss-20b',
+  'openai/gpt-oss-120b',
 ];
 
+/**
+ * A pinned GROQ_MODEL is a *preference*, not an exclusive.
+ *
+ * It used to be exclusive, and a single typo in .env ("openai/gpt-oss-120"
+ * instead of "…-120b") disabled the entire AI layer with one warning in the
+ * log. Preferring the pinned id but keeping the chain behind it means a bad
+ * value costs you your preferred model, not the feature.
+ */
 export function configuredModels(): string[] {
   const pinned = process.env.GROQ_MODEL?.trim();
-  return pinned ? [pinned] : MODEL_CHAIN;
+  if (!pinned) return MODEL_CHAIN;
+  return [pinned, ...MODEL_CHAIN.filter((m) => m !== pinned)];
 }
 
 let client: OpenAI | null = null;
@@ -62,6 +70,24 @@ export interface CompletionRequest {
 export interface CompletionResult {
   text: string;
   model: string;
+}
+
+/**
+ * Models that emit an internal `reasoning` field before writing `content`.
+ *
+ * Those reasoning tokens are billed against max_tokens, so a budget sized for a
+ * short answer gets consumed entirely by the thinking and `content` comes back
+ * as an empty string with finish_reason "stop" — a success response with no
+ * output. Measured on openai/gpt-oss-120b: max_tokens 10 returned '', while
+ * max_tokens 400 returned 'ok' after spending 25 tokens reasoning.
+ *
+ * These models need headroom on top of whatever the caller asked for.
+ */
+const REASONING_MODEL = /gpt-oss|qwen3|^o[1-9]|deepseek-r/i;
+const REASONING_HEADROOM = 700;
+
+function tokenBudget(model: string, requested: number): number {
+  return REASONING_MODEL.test(model) ? requested + REASONING_HEADROOM : requested;
 }
 
 /** A model id that does not exist, or that this key cannot use. */
@@ -106,20 +132,37 @@ export async function complete(request: CompletionRequest): Promise<CompletionRe
             { role: 'user', content: user },
           ],
           temperature,
-          max_tokens: maxTokens,
+          max_tokens: tokenBudget(model, maxTokens),
           ...(json ? { response_format: { type: 'json_object' as const } } : {}),
         },
         { signal: controller.signal }
       );
 
-      const text = response.choices[0]?.message?.content ?? '';
-      if (!text.trim()) continue;
+      const choice = response.choices[0];
+      const text = choice?.message?.content ?? '';
+
+      if (!text.trim()) {
+        const reason = choice?.finish_reason;
+        console.warn(
+          `[groq] model "${model}" returned empty content` +
+            (reason === 'length' ? ' (hit the token limit while reasoning)' : ` (finish_reason: ${reason})`)
+        );
+        continue;
+      }
 
       workingModel = model;
       return { text, model };
     } catch (error) {
       if (isModelUnavailable(error)) {
-        console.warn(`[groq] model "${model}" unavailable, trying the next in the chain`);
+        const pinned = process.env.GROQ_MODEL?.trim();
+        if (model === pinned) {
+          console.warn(
+            `[groq] GROQ_MODEL="${model}" is not a valid model id for this key. ` +
+              'Check https://api.groq.com/openai/v1/models. Falling back to the built-in chain.'
+          );
+        } else {
+          console.warn(`[groq] model "${model}" unavailable, trying the next in the chain`);
+        }
         continue; // retired or not permitted for this key — try the next
       }
       // Auth failures, rate limits and timeouts are not fixed by another model.
@@ -147,8 +190,10 @@ export async function probeGroq(): Promise<{
     const result = await complete({
       system: 'Reply with exactly: ok',
       user: 'ping',
-      maxTokens: 5,
-      timeoutMs: 8000,
+      // Generous on purpose: a reasoning model needs room to think before it
+      // can produce even a two-character answer.
+      maxTokens: 64,
+      timeoutMs: 15000,
     });
 
     if (!result) {

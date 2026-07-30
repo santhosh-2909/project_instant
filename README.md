@@ -83,7 +83,7 @@ node -e "console.log(require('crypto').randomBytes(48).toString('base64url'))"
 npm run dev         # dev server
 npm run build       # production build
 npm start           # serve the build
-npm test            # 248 tests, single run
+npm test            # 250 tests, single run
 npm run test:watch
 npm run typecheck   # tsc --noEmit
 npm run lint        # oxlint
@@ -154,10 +154,27 @@ curl "http://localhost:3000/api/health?probe=1"
 # {"groq":{"configured":true,"reachable":true,"model":"llama-3.1-8b-instant"}}
 ```
 
-`GROQ_MODEL` is intentionally blank by default. Groq retires model ids on a
-rolling basis, and a pinned id that disappears would turn every AI call into a
-silent no-op, because this codebase degrades rather than failing loudly. The
-client instead walks a chain of candidates and remembers whichever answers.
+`GROQ_MODEL` is a **preference, not an exclusive** — the built-in chain stays
+behind it. Groq retires model ids on a rolling basis, and this codebase degrades
+rather than failing loudly, so an id that disappears would otherwise turn every
+AI call into a silent no-op. List what your key can actually reach with:
+
+```bash
+curl https://api.groq.com/openai/v1/models -H "Authorization: Bearer $GROQ_API_KEY"
+```
+
+### Reasoning models
+
+`openai/gpt-oss-*`, `qwen3` and similar emit an internal `reasoning` field
+*before* writing `content`, and those tokens count against `max_tokens`. A budget
+sized for a short answer gets consumed entirely by the thinking, and the reply
+arrives as an empty string with `finish_reason: "stop"` — a success response with
+no output. Measured on `openai/gpt-oss-120b`: `max_tokens: 10` returned `''`,
+`max_tokens: 400` returned `'ok'` after 25 reasoning tokens.
+
+`groqClient.ts` detects these models and adds headroom automatically. They are
+noticeably slower — expect 4–8s per verification rather than under 2s — which is
+why the pipeline budget is 20s. Pin `llama-3.1-8b-instant` for speed over depth.
 
 ### What the LLM is and is not allowed to do
 
