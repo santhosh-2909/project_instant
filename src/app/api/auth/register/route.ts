@@ -1,5 +1,11 @@
 import { NextResponse } from 'next/server';
 import { db } from '@/server/data/db';
+import {
+  InvalidLocationError,
+  resolveLocation,
+  resolveSecurityQuestion,
+  type ResolvedLocation,
+} from '@/server/data/locations';
 import * as bcrypt from 'bcryptjs';
 import { normaliseSecurityAnswer } from '@/server/auth/securityAnswer';
 import { consume, clientKey, rateLimitHeaders, LIMITS } from '@/server/http/rateLimit';
@@ -22,10 +28,10 @@ export async function POST(request: Request) {
       email,
       password,
       mobileNumber,
-      countryId,
-      stateId,
-      cityId,
-      securityQuestionId,
+      country,
+      state,
+      city,
+      securityQuestion,
       securityAnswer,
     } = body;
 
@@ -36,10 +42,10 @@ export async function POST(request: Request) {
       !email ||
       !password ||
       !mobileNumber ||
-      !countryId ||
-      !stateId ||
-      !cityId ||
-      !securityQuestionId ||
+      !country ||
+      !state ||
+      !city ||
+      !securityQuestion ||
       !securityAnswer
     ) {
       return NextResponse.json(
@@ -105,6 +111,27 @@ export async function POST(request: Request) {
     // hashed, never stored in readable form.
     const hashedSecurityAnswer = await bcrypt.hash(normaliseSecurityAnswer(securityAnswer), 10);
 
+    /*
+     * Location and security-question lists are static (shared/locations.ts), so
+     * the client sends names rather than database ids. These resolve the names
+     * to rows — validating against the same static dataset first, then creating
+     * the row on first use — so the User foreign keys still hold without
+     * pre-seeding every city on earth.
+     */
+    let location: ResolvedLocation;
+    let securityQuestionId: number;
+    try {
+      [location, securityQuestionId] = await Promise.all([
+        resolveLocation(String(country), String(state), String(city)),
+        resolveSecurityQuestion(String(securityQuestion)),
+      ]);
+    } catch (error) {
+      if (error instanceof InvalidLocationError) {
+        return NextResponse.json({ error: error.message }, { status: 400 });
+      }
+      throw error;
+    }
+
     // Create User
     const newUser = await db.user.create({
       data: {
@@ -113,12 +140,12 @@ export async function POST(request: Request) {
         email: String(email).trim().toLowerCase(),
         password: hashedPassword,
         mobileNumber,
-        countryId: Number(countryId),
-        stateId: Number(stateId),
-        cityId: Number(cityId),
+        countryId: location.countryId,
+        stateId: location.stateId,
+        cityId: location.cityId,
         statusId: activeStatus.statusId,
         roleId: defaultRole.roleId,
-        securityQuestionId: Number(securityQuestionId),
+        securityQuestionId,
         securityAnswer: hashedSecurityAnswer,
       },
     });

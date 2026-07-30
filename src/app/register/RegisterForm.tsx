@@ -4,60 +4,42 @@ import * as React from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Alert, Button, Card, CardBody, CardHeader, Field, Input, Select } from '@/client/components/ui';
-
-interface Reference {
-  countries: Array<{ countryId: number; countryName: string }>;
-  securityQuestions: Array<{ securityQuestionId: number; question: string }>;
-}
+import { COUNTRIES, SECURITY_QUESTIONS, citiesOf, statesOf } from '@/shared/locations';
 
 export function RegisterForm() {
   const router = useRouter();
-
-  const [references, setReferences] = React.useState<Reference>({ countries: [], securityQuestions: [] });
-  const [states, setStates] = React.useState<Array<{ stateId: number; stateName: string }>>([]);
-  const [cities, setCities] = React.useState<Array<{ cityId: number; cityName: string }>>([]);
 
   const [form, setForm] = React.useState({
     firstName: '',
     lastName: '',
     email: '',
     mobileNumber: '',
-    countryId: '',
-    stateId: '',
-    cityId: '',
-    securityQuestionId: '',
+    country: '',
+    state: '',
+    city: '',
+    securityQuestion: '',
     securityAnswer: '',
     password: '',
     confirmPassword: '',
   });
+
+  /*
+   * Location lists come from static data, not the network. They used to be
+   * fetched from /api/news/sources, which meant an unseeded or unreachable
+   * database left every dropdown empty and the form unusable.
+   */
+  const states = React.useMemo(() => statesOf(form.country), [form.country]);
+  const cities = React.useMemo(() => citiesOf(form.country, form.state), [form.country, form.state]);
 
   const [error, setError] = React.useState<string | null>(null);
   const [submitting, setSubmitting] = React.useState(false);
 
   const set = (key: keyof typeof form) => (value: string) => setForm((f) => ({ ...f, [key]: value }));
 
-  React.useEffect(() => {
-    fetch('/api/news/sources')
-      .then((r) => r.json())
-      .then((data) => setReferences({ countries: data.countries ?? [], securityQuestions: data.securityQuestions ?? [] }))
-      .catch(() => setError('Could not load the registration form options. Please refresh.'));
-  }, []);
-
-  React.useEffect(() => {
-    if (!form.countryId) return;
-    fetch(`/api/news/sources?countryId=${form.countryId}`)
-      .then((r) => r.json())
-      .then((data) => setStates(data.states ?? []))
-      .catch(() => setStates([]));
-  }, [form.countryId]);
-
-  React.useEffect(() => {
-    if (!form.stateId) return;
-    fetch(`/api/news/sources?stateId=${form.stateId}`)
-      .then((r) => r.json())
-      .then((data) => setCities(data.cities ?? []))
-      .catch(() => setCities([]));
-  }, [form.stateId]);
+  // Changing a parent invalidates its children, otherwise a stale
+  // "Tamil Nadu / Chennai" survives a switch to another country.
+  const setCountry = (value: string) => setForm((f) => ({ ...f, country: value, state: '', city: '' }));
+  const setState = (value: string) => setForm((f) => ({ ...f, state: value, city: '' }));
 
   const passwordMismatch = form.confirmPassword.length > 0 && form.password !== form.confirmPassword;
   const passwordTooShort = form.password.length > 0 && form.password.length < 8;
@@ -157,11 +139,11 @@ export function RegisterForm() {
             <div style={{ gridColumn: 'span 4' }}>
               <Field label="Country" required>
                 {(props) => (
-                  <Select {...props} value={form.countryId} onChange={(e) => set('countryId')(e.target.value)} required>
+                  <Select {...props} value={form.country} onChange={(e) => setCountry(e.target.value)} required>
                     <option value="">Select…</option>
-                    {references.countries.map((c) => (
-                      <option key={c.countryId} value={c.countryId}>
-                        {c.countryName}
+                    {COUNTRIES.map((c) => (
+                      <option key={c.code} value={c.name}>
+                        {c.name}
                       </option>
                     ))}
                   </Select>
@@ -173,15 +155,15 @@ export function RegisterForm() {
                 {(props) => (
                   <Select
                     {...props}
-                    value={form.stateId}
-                    onChange={(e) => set('stateId')(e.target.value)}
-                    disabled={!form.countryId}
+                    value={form.state}
+                    onChange={(e) => setState(e.target.value)}
+                    disabled={!form.country}
                     required
                   >
-                    <option value="">Select…</option>
+                    <option value="">{form.country ? 'Select…' : 'Country first'}</option>
                     {states.map((state) => (
-                      <option key={state.stateId} value={state.stateId}>
-                        {state.stateName}
+                      <option key={state.name} value={state.name}>
+                        {state.name}
                       </option>
                     ))}
                   </Select>
@@ -193,15 +175,15 @@ export function RegisterForm() {
                 {(props) => (
                   <Select
                     {...props}
-                    value={form.cityId}
-                    onChange={(e) => set('cityId')(e.target.value)}
-                    disabled={!form.stateId}
+                    value={form.city}
+                    onChange={(e) => set('city')(e.target.value)}
+                    disabled={!form.state}
                     required
                   >
-                    <option value="">Select…</option>
+                    <option value="">{form.state ? 'Select…' : 'State first'}</option>
                     {cities.map((city) => (
-                      <option key={city.cityId} value={city.cityId}>
-                        {city.cityName}
+                      <option key={city} value={city}>
+                        {city}
                       </option>
                     ))}
                   </Select>
@@ -214,14 +196,14 @@ export function RegisterForm() {
             {(props) => (
               <Select
                 {...props}
-                value={form.securityQuestionId}
-                onChange={(e) => set('securityQuestionId')(e.target.value)}
+                value={form.securityQuestion}
+                onChange={(e) => set('securityQuestion')(e.target.value)}
                 required
               >
                 <option value="">Select…</option>
-                {references.securityQuestions.map((q) => (
-                  <option key={q.securityQuestionId} value={q.securityQuestionId}>
-                    {q.question}
+                {SECURITY_QUESTIONS.map((question) => (
+                  <option key={question} value={question}>
+                    {question}
                   </option>
                 ))}
               </Select>
