@@ -12,6 +12,8 @@ const REPORT: VerificationReport = {
   verdict: 'Fake',
   confidence: 91,
   summary: 'Evidence contradicts this claim.',
+  narrative: null,
+  narrativeModel: null,
   signals: [
     { label: 'Professional fact-checks', score: -1, weight: 0.5, detail: 'Rated false by PIB Fact Check.' },
     { label: 'Language analysis', score: -0.4, weight: 0.12, detail: 'Sensationalist phrasing detected.' },

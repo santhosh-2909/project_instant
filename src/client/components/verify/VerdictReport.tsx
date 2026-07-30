@@ -79,6 +79,25 @@ export function VerdictReport({ report }: { report: VerificationReport }) {
             <h2 className={s.verdictTitle}>{VERDICT_HEADLINE[report.verdict]}</h2>
             <p className={s.verdictSummary}>{report.summary}</p>
 
+            {/*
+              AI-written explanation. Shown beneath the deterministic summary,
+              never instead of it, and labelled so a reader can tell which parts
+              of this report a model wrote and which were measured.
+            */}
+            {report.narrative && (
+              <div className={s.narrative}>
+                <span className={s.narrativeLabel}>
+                  Analysis
+                  <span className={s.narrativeBadge}>AI-written</span>
+                </span>
+                <p>{report.narrative}</p>
+                <span className={s.narrativeNote}>
+                  Written by {report.narrativeModel ?? 'a language model'} from the sources below. The verdict
+                  itself was decided by evidence weighting, not by the model.
+                </span>
+              </div>
+            )}
+
             <blockquote className={s.claimQuote}>
               <span className={s.claimLabel}>Claim assessed</span>
               {report.claim.title}

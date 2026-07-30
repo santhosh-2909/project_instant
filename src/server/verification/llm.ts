@@ -18,8 +18,7 @@
  * browser.
  */
 import 'server-only';
-import OpenAI from 'openai';
-import { optionalKey } from '@/server/config/env';
+import { complete } from '@/server/verification/groqClient';
 import type { LlmAssessment } from '@/server/verification/decisionEngine';
 import type { RetrievedEvidence } from '@/shared/types';
 
@@ -118,42 +117,24 @@ export async function assess(
   evidence: RetrievedEvidence[],
   timeoutMs = 4000
 ): Promise<LlmAssessment | null> {
-  const groqKey = optionalKey('GROQ_API_KEY');
-  if (!groqKey) return null;
+  const result = await complete({
+    system: SYSTEM_PROMPT,
+    user: buildUserPrompt(claim, evidence),
+    json: true,
+    maxTokens: 300,
+    temperature: 0,
+    timeoutMs,
+  });
 
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  if (!result) return null;
 
-  try {
-    const client = new OpenAI({ apiKey: groqKey, baseURL: 'https://api.groq.com/openai/v1' });
+  const assessment = parseAssessment(result.text);
+  if (!assessment) return null;
 
-    const response = await client.chat.completions.create(
-      {
-        model: process.env.GROQ_MODEL || 'llama-3.1-8b-instant',
-        messages: [
-          { role: 'system', content: SYSTEM_PROMPT },
-          { role: 'user', content: buildUserPrompt(claim, evidence) },
-        ],
-        temperature: 0,
-        max_tokens: 300,
-        response_format: { type: 'json_object' },
-      },
-      { signal: controller.signal }
-    );
-
-    const assessment = parseAssessment(response.choices[0]?.message?.content ?? '');
-    if (!assessment) return null;
-
-    if (mentionsUnretrievedSource(assessment.reasoning, evidence)) {
-      console.warn('[llm] discarded assessment citing an unretrieved source');
-      return null;
-    }
-
-    return assessment;
-  } catch (error) {
-    console.warn('[llm] reasoning layer unavailable:', error instanceof Error ? error.message : error);
+  if (mentionsUnretrievedSource(assessment.reasoning, evidence)) {
+    console.warn('[llm] discarded assessment citing an unretrieved source');
     return null;
-  } finally {
-    clearTimeout(timer);
   }
+
+  return assessment;
 }

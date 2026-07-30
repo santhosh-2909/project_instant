@@ -13,6 +13,7 @@ import { NextResponse } from 'next/server';
 import { getAuthUser } from '@/server/auth/session';
 import { decide } from '@/server/verification/decisionEngine';
 import { assess } from '@/server/verification/llm';
+import { generateNarrative } from '@/server/verification/reportNarrative';
 import { retrieveEvidence } from '@/server/verification/retrieval';
 import { providerStatus } from '@/server/config/env';
 import { consume, clientKey, rateLimitHeaders, LIMITS } from '@/server/http/rateLimit';
@@ -105,12 +106,34 @@ export async function POST(request: Request) {
     // --- Fusion -------------------------------------------------------------
     const decision = decide(title || content.slice(0, 120), content || title, retrieval, llm);
 
+    /*
+     * Report narrative. Written AFTER the verdict is fixed, and given the
+     * verdict as an instruction rather than a question — the model explains the
+     * decision, it does not participate in making it. Null whenever Groq is
+     * unconfigured or the output fails a guard; the deterministic summary from
+     * the Decision Engine is always present as the fallback.
+     */
+    const budgetLeft = PIPELINE_BUDGET_MS - (Date.now() - startedAt);
+    const narrative =
+      budgetLeft > 1200
+        ? await generateNarrative(
+            claim,
+            decision.verdict,
+            decision.confidence,
+            decision.signals,
+            decision.evidence,
+            Math.min(5000, budgetLeft)
+          )
+        : null;
+
     return NextResponse.json(
       {
         claim: { title: title || 'Untitled claim', url: sourceUrl || null, characters: combinedLength },
         verdict: decision.verdict,
         confidence: decision.confidence,
         summary: decision.summary,
+        narrative: narrative?.summary ?? null,
+        narrativeModel: narrative?.model ?? null,
         signals: decision.signals,
         evidence: decision.evidence,
         caveats: decision.caveats,

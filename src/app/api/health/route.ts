@@ -12,11 +12,17 @@
 import { NextResponse } from 'next/server';
 import { providerStatus } from '@/server/config/env';
 import { embeddingStatus } from '@/server/verification/embeddings';
+import { probeGroq } from '@/server/verification/groqClient';
 
 export const dynamic = 'force-dynamic';
 
-export async function GET() {
+export async function GET(request: Request) {
   const providers = providerStatus();
+
+  // ?probe=1 actually calls Groq, so a newly-added key can be confirmed
+  // end to end rather than merely "present in the environment".
+  const probe = new URL(request.url).searchParams.get('probe') === '1';
+  const groq = probe ? await probeGroq() : null;
 
   // Keyless providers always work, so the verification path is always live.
   // The database is optional — only accounts, history and analytics need it.
@@ -43,6 +49,7 @@ export async function GET() {
       checks,
       providers,
       embeddings: embeddingStatus(),
+      ...(groq ? { groq } : {}),
       degraded,
       timestamp: new Date().toISOString(),
     },

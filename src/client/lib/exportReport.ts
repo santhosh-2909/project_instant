@@ -48,6 +48,16 @@ export function buildReportPdf(report: VerificationReport): Uint8Array {
 
   doc.heading(`Verdict: ${report.verdict}`, 15);
   doc.text(report.summary, { size: 10, grey: 0.2 });
+
+  if (report.narrative) {
+    doc.spacer(2);
+    doc.label('Analysis');
+    doc.text(report.narrative, { size: 10, grey: 0.22 });
+    doc.text(
+      `Written by ${report.narrativeModel ?? 'a language model'} from the sources listed below. The verdict itself was determined by evidence weighting, not by the model.`,
+      { size: 7.5, grey: 0.5, font: 'oblique', spaceAfter: 4 }
+    );
+  }
   doc.spacer(2);
 
   doc.label('Assessment summary');

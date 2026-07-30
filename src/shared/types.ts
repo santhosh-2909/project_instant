@@ -81,6 +81,10 @@ export interface VerificationReport {
   verdict: Verdict;
   confidence: number;
   summary: string;
+  /** AI-written explanation of the verdict. Null when unavailable. */
+  narrative: string | null;
+  /** Which Groq model wrote it, for provenance in the report. */
+  narrativeModel: string | null;
   signals: SignalContribution[];
   evidence: RetrievedEvidence[];
   caveats: string[];

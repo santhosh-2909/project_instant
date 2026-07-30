@@ -83,7 +83,7 @@ node -e "console.log(require('crypto').randomBytes(48).toString('base64url'))"
 npm run dev         # dev server
 npm run build       # production build
 npm start           # serve the build
-npm test            # 213 tests, single run
+npm test            # 248 tests, single run
 npm run test:watch
 npm run typecheck   # tsc --noEmit
 npm run lint        # oxlint
@@ -131,6 +131,51 @@ Guarantees enforced in code, each covered by tests:
 - **Scoring is deterministic.** No `Math.random()` anywhere in the decision path.
 
 ---
+
+## AI models
+
+| Role | Model | Key needed |
+|---|---|---|
+| Semantic search | Sentence Transformers `all-MiniLM-L6-v2`, in-process via Transformers.js/ONNX | no |
+| Reasoning + report writing | Groq, `llama-3.1-8b-instant` with a fallback chain | yes |
+
+### Adding your Groq key
+
+```bash
+# .env
+GROQ_API_KEY="gsk_..."     # free key from https://console.groq.com/keys
+GROQ_MODEL=""              # leave blank to use the fallback chain
+```
+
+Restart, then confirm the key actually works — not merely that it is present:
+
+```bash
+curl "http://localhost:3000/api/health?probe=1"
+# {"groq":{"configured":true,"reachable":true,"model":"llama-3.1-8b-instant"}}
+```
+
+`GROQ_MODEL` is intentionally blank by default. Groq retires model ids on a
+rolling basis, and a pinned id that disappears would turn every AI call into a
+silent no-op, because this codebase degrades rather than failing loudly. The
+client instead walks a chain of candidates and remembers whichever answers.
+
+### What the LLM is and is not allowed to do
+
+It has two jobs, both deliberately bounded:
+
+1. **Reasoning signal — 6% of the verdict.** Given only the retrieved passages,
+   it returns a score and a rationale. It is never asked for citations, and any
+   rationale naming an outlet that was not retrieved is discarded.
+2. **Report narrative.** After the verdict is fixed, it writes the plain-language
+   explanation shown in the report and the PDF. It receives the verdict as an
+   instruction, not a question.
+
+It does **not** decide verdicts. Evidence weighting does that, deterministically.
+A narrative that contradicts its own verdict, or cites a source that was never
+retrieved, is thrown away and the deterministic summary is shown instead.
+
+Everything works without a Groq key: verdicts, evidence, confidence and the
+report all function, minus the AI-written paragraph.
 
 ## Project structure
 
