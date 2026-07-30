@@ -83,7 +83,7 @@ node -e "console.log(require('crypto').randomBytes(48).toString('base64url'))"
 npm run dev         # dev server
 npm run build       # production build
 npm start           # serve the build
-npm test            # 265 tests, single run
+npm test            # 292 tests, single run
 npm run test:watch
 npm run typecheck   # tsc --noEmit
 npm run lint        # oxlint
@@ -143,6 +143,7 @@ Guarantees enforced in code, each covered by tests:
 | News archive | NewsAPI | `NEWS_API_KEY` | Developer tier, 100 req/day |
 | Web search | Tavily | `TAVILY_API_KEY` | **Escalation tier** — see below |
 | Reasoning + report writing | Groq | `GROQ_API_KEY` | Model fallback chain |
+| AI fallback | Google Gemini | `GEMINI_API_KEY` | Used only when Groq is unavailable |
 
 The first three need no key, which is why verification works on a fresh clone.
 
@@ -195,6 +196,37 @@ no output. Measured on `openai/gpt-oss-120b`: `max_tokens: 10` returned `''`,
 `groqClient.ts` detects these models and adds headroom automatically. They are
 noticeably slower — expect 4–8s per verification rather than under 2s — which is
 why the pipeline budget is 20s. Pin `llama-3.1-8b-instant` for speed over depth.
+
+### Two AI providers, because one silently disappearing is the failure mode
+
+Groq carries the reasoning signal and writes the report; Gemini takes over when
+Groq is down, rate-limited or misconfigured. Verified by invalidating the Groq
+key: `[groq] request failed: 401` followed by `[ai] Groq unavailable — answered
+with Gemini (gemini-3-flash-preview) instead`, with the verdict unchanged.
+
+Both use a model *chain* rather than a pinned id, for the same reason. Google
+lists `gemini-2.5-flash` in its models endpoint and then returns 404 "no longer
+available to new users" when you call it — **a listing is not a capability
+check**, and only a real request settles which models a key can use. Leave
+`GEMINI_MODEL` and `GROQ_MODEL` blank unless you have a reason not to.
+
+### Why the guards are not paranoia
+
+While Groq was disabled for that failover test, Gemini wrote this for a claim
+the evidence had established as **Real**:
+
+> "The claim that Vijay is the Chief Minister of Tamil Nadu is false, as
+> M. K. Stalin currently holds the position."
+
+Wrong — Stalin is the former Chief Minister — and it flatly contradicted the
+verdict it had been asked to explain. The model's training data simply predates
+the change. `contradictsVerdict()` discarded it and the report fell back to the
+deterministic summary.
+
+Without that guard the report would have printed a confident falsehood directly
+beneath a verdict saying the opposite. This is exactly why the model explains
+verdicts and never decides them. Pinned as a regression test in
+`tests/narrative.test.ts`.
 
 ### What the LLM is and is not allowed to do
 

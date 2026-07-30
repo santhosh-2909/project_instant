@@ -3,6 +3,7 @@
 import { describe, it, expect } from 'vitest';
 import { contradictsVerdict, parseSummary } from '@/server/verification/reportNarrative';
 import { configuredModels } from '@/server/verification/groqClient';
+import { configuredGeminiModels } from '@/server/verification/geminiClient';
 import type { RetrievedEvidence } from '@/shared/types';
 import { mentionsUnretrievedSource } from '@/server/verification/llm';
 
@@ -121,5 +122,51 @@ describe('TC-NAR-04 Groq model selection', () => {
   it('includes the reasoning models that need extra token headroom', () => {
     delete process.env.GROQ_MODEL;
     expect(configuredModels().some((m) => /gpt-oss/.test(m))).toBe(true);
+  });
+});
+
+
+describe('TC-NAR-05 Gemini fallback model selection', () => {
+  it('falls back through a chain when no model is pinned', () => {
+    delete process.env.GEMINI_MODEL;
+    const models = configuredGeminiModels();
+    expect(models.length).toBeGreaterThan(1);
+  });
+
+  it('excludes gemini-2.5-flash, which Google lists but no longer serves', () => {
+    delete process.env.GEMINI_MODEL;
+    // The models endpoint returns it; calling it returns 404 "no longer
+    // available to new users". A listing is not a capability check.
+    expect(configuredGeminiModels()).not.toContain('gemini-2.5-flash');
+  });
+
+  it('ends on an alias Google repoints, so the chain outlives specific ids', () => {
+    delete process.env.GEMINI_MODEL;
+    const models = configuredGeminiModels();
+    expect(models[models.length - 1]).toBe('gemini-flash-latest');
+  });
+
+  it('treats a pinned model as a preference, not an exclusive', () => {
+    process.env.GEMINI_MODEL = 'gemini-2.5-flash';
+    const models = configuredGeminiModels();
+    expect(models[0]).toBe('gemini-2.5-flash');
+    // Even a retired pin must not cost the whole provider.
+    expect(models.length).toBeGreaterThan(1);
+    delete process.env.GEMINI_MODEL;
+  });
+});
+
+describe('TC-NAR-06 REGRESSION: an outdated model must not override the evidence', () => {
+  it('discards the exact narrative Gemini produced for a verified claim', () => {
+    /*
+     * Captured from a live Gemini call while Groq was deliberately broken.
+     * Its training data says Stalin holds the office, so it wrote a narrative
+     * calling a claim false that the evidence had established as Real — and
+     * would have printed that directly beneath the verdict contradicting it.
+     */
+    const geminiOutput =
+      'The claim that Vijay is the Chief Minister of Tamil Nadu is false, as M. K. Stalin currently holds the position.';
+
+    expect(contradictsVerdict(geminiOutput, 'Real')).toBe(true);
   });
 });

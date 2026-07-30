@@ -177,6 +177,30 @@ export async function complete(request: CompletionRequest): Promise<CompletionRe
   return null;
 }
 
+/**
+ * Runs a completion through whichever AI provider answers.
+ *
+ * Groq first — it is faster and carries the reasoning signal. Gemini second, so
+ * that one provider being down, rate-limited or misconfigured does not silently
+ * remove the AI layer from every verdict. That failure has happened twice here
+ * already, and because the pipeline degrades rather than erroring, neither time
+ * was obvious from the outside.
+ *
+ * Imported lazily to keep the two clients from importing each other.
+ */
+export async function completeWithFallback(request: CompletionRequest): Promise<CompletionResult | null> {
+  const viaGroq = await complete(request);
+  if (viaGroq) return viaGroq;
+
+  const { completeWithGemini } = await import('@/server/verification/geminiClient');
+  const viaGemini = await completeWithGemini(request);
+
+  if (viaGemini) {
+    console.warn(`[ai] Groq unavailable — answered with Gemini (${viaGemini.model}) instead`);
+  }
+  return viaGemini;
+}
+
 /** Diagnostic for /api/health — verifies the key actually works. */
 export async function probeGroq(): Promise<{
   configured: boolean;

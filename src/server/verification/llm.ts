@@ -18,7 +18,7 @@
  * browser.
  */
 import 'server-only';
-import { complete } from '@/server/verification/groqClient';
+import { completeWithFallback } from '@/server/verification/groqClient';
 import type { LlmAssessment } from '@/server/verification/decisionEngine';
 import type { RetrievedEvidence } from '@/shared/types';
 
@@ -117,7 +117,7 @@ export async function assess(
   evidence: RetrievedEvidence[],
   timeoutMs = 4000
 ): Promise<LlmAssessment | null> {
-  const result = await complete({
+  const result = await completeWithFallback({
     system: SYSTEM_PROMPT,
     user: buildUserPrompt(claim, evidence),
     json: true,

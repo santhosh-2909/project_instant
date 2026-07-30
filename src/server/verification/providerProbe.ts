@@ -6,6 +6,7 @@ import 'server-only';
 
 import { optionalKey } from '@/server/config/env';
 import { probeGroq } from '@/server/verification/groqClient';
+import { geminiModel, probeGemini } from '@/server/verification/geminiClient';
 
 /**
  * Live credential checks.
@@ -165,6 +166,29 @@ async function probeGroqProvider(): Promise<ProbeResult> {
   };
 }
 
+/* ------------------------------------------------------------------ Gemini */
+
+async function probeGeminiProvider(): Promise<ProbeResult> {
+  const result = await probeGemini();
+  if (!result.configured) {
+    return {
+      provider: 'gemini',
+      configured: false,
+      working: false,
+      detail: 'Not configured. Groq has no fallback, so an outage there removes the AI layer entirely.',
+    };
+  }
+  return {
+    provider: 'gemini',
+    configured: true,
+    working: result.reachable,
+    detail: result.reachable
+      ? `Responding via ${result.model}. Used only when Groq is unavailable.`
+      : (result.error ?? 'No response.') +
+        ` Check the key and that "${geminiModel()}" exists: curl "https://generativelanguage.googleapis.com/v1beta/models?key=$GEMINI_API_KEY"`,
+  };
+}
+
 /* ---------------------------------------------------------------- Aggregate */
 
 export interface ProbeReport {
@@ -176,7 +200,13 @@ export interface ProbeReport {
 }
 
 export async function probeAllProviders(): Promise<ProbeReport> {
-  const probes = await Promise.all([probeFactCheck(), probeNewsApi(), probeTavily(), probeGroqProvider()]);
+  const probes = await Promise.all([
+    probeFactCheck(),
+    probeNewsApi(),
+    probeTavily(),
+    probeGroqProvider(),
+    probeGeminiProvider(),
+  ]);
 
   return {
     keyless: ['googlenews', 'wikipedia', 'wikidata', 'embeddings'],

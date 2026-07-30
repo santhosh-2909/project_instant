@@ -4,7 +4,7 @@
  */
 import 'server-only';
 
-import { complete } from '@/server/verification/groqClient';
+import { completeWithFallback } from '@/server/verification/groqClient';
 import { mentionsUnretrievedSource } from '@/server/verification/llm';
 import type { RetrievedEvidence, SignalContribution, Verdict } from '@/shared/types';
 
@@ -128,7 +128,7 @@ export async function generateNarrative(
   evidence: RetrievedEvidence[],
   timeoutMs = 5000
 ): Promise<NarrativeResult | null> {
-  const result = await complete({
+  const result = await completeWithFallback({
     system: SYSTEM_PROMPT,
     user: buildPrompt(claim, verdict, confidence, signals, evidence),
     json: true,
