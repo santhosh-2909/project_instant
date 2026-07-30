@@ -11,6 +11,7 @@ import { getAuthUser } from '@/server/auth/session';
 import { db } from '@/server/data/db';
 import { providerStatus } from '@/server/config/env';
 import { consume, clientKey, rateLimitHeaders, LIMITS } from '@/server/http/rateLimit';
+import { describeError } from '@/server/data/errors';
 
 export async function GET(request: Request) {
   const authUser = await getAuthUser();
@@ -90,6 +91,10 @@ export async function GET(request: Request) {
     );
   } catch (error) {
     console.error('[api/analytics] failed:', error);
-    return NextResponse.json({ error: 'Could not load analytics.' }, { status: 500 });
+    const friendly = describeError(error, 'Could not load analytics.');
+    return NextResponse.json(
+      { error: friendly.message },
+      { status: friendly.status }
+    );
   }
 }

@@ -36,9 +36,23 @@ Verification works immediately: Google News, Wikipedia and Wikidata need no API
 key. Configure the rest only when you want accounts and fact-checker rulings:
 
 ```bash
-cp .env.example .env.local     # then fill in the values (see below)
+cp .env.example .env           # NOT .env.local — see the note below
 npm run db:push                # create the schema
 npm run db:seed                # reference data: roles, statuses, thresholds…
+```
+
+> **Use `.env`, not `.env.local`.** Next.js reads both, but the Prisma CLI reads
+> only `.env`. Splitting them means `npm run dev` sees the database and
+> `prisma db push` does not, which fails with
+> *"Environment variable not found: DATABASE_URL"*.
+
+No Postgres to hand? One container is enough:
+
+```bash
+docker run -d --name veritasguard-db   -e POSTGRES_USER=veritasguard -e POSTGRES_PASSWORD=veritasguard   -e POSTGRES_DB=veritasguard -p 5435:5432 postgres:16-alpine
+
+# then in .env:
+# DATABASE_URL="postgresql://veritasguard:veritasguard@localhost:5435/veritasguard"
 ```
 
 ### Required environment

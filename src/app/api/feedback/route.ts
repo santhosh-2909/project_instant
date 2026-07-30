@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getAuthUser } from '@/server/auth/session';
 import { db } from '@/server/data/db';
+import { describeError } from '@/server/data/errors';
 
 export async function GET() {
   try {
@@ -46,7 +47,11 @@ export async function GET() {
     return NextResponse.json({ feedbacks });
   } catch (error) {
     console.error('Error fetching feedbacks:', error);
-    return NextResponse.json({ error: 'Failed to retrieve feedback history.' }, { status: 500 });
+    const friendly = describeError(error, 'Failed to retrieve feedback history.');
+    return NextResponse.json(
+      { error: friendly.message },
+      { status: friendly.status }
+    );
   }
 }
 
@@ -117,7 +122,11 @@ export async function POST(request: Request) {
     });
   } catch (error) {
     console.error('Error submitting feedback:', error);
-    return NextResponse.json({ error: 'Unable to save feedback.' }, { status: 500 });
+    const friendly = describeError(error, 'Unable to save feedback.');
+    return NextResponse.json(
+      { error: friendly.message },
+      { status: friendly.status }
+    );
   }
 }
 
@@ -169,6 +178,10 @@ export async function PUT(request: Request) {
     });
   } catch (error) {
     console.error('Error updating resolution:', error);
-    return NextResponse.json({ error: 'Resolution update failed.' }, { status: 500 });
+    const friendly = describeError(error, 'Resolution update failed.');
+    return NextResponse.json(
+      { error: friendly.message },
+      { status: friendly.status }
+    );
   }
 }

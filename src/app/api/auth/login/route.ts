@@ -3,6 +3,7 @@ import * as bcrypt from 'bcryptjs';
 import { db } from '@/server/data/db';
 import { signSession, setSessionCookie, clearSessionCookie } from '@/server/auth/session';
 import { consume, clientKey, rateLimitHeaders, LIMITS } from '@/server/http/rateLimit';
+import { describeError } from '@/server/data/errors';
 
 const MAX_FAILED_ATTEMPTS = 3;
 
@@ -118,7 +119,11 @@ export async function POST(request: Request) {
     );
   } catch (error) {
     console.error('[api/auth/login] failed:', error);
-    return NextResponse.json({ error: 'Sign-in failed due to a server error.' }, { status: 500, headers });
+    const friendly = describeError(error, 'Sign-in failed due to a server error.');
+    return NextResponse.json(
+      { error: friendly.message },
+      { status: friendly.status }
+    );
   }
 }
 
@@ -127,7 +132,8 @@ export async function DELETE() {
   try {
     await clearSessionCookie();
     return NextResponse.json({ message: 'Signed out successfully.' });
-  } catch {
-    return NextResponse.json({ error: 'Sign-out failed.' }, { status: 500 });
+  } catch (error) {
+    const friendly = describeError(error, 'Sign-out failed.');
+    return NextResponse.json({ error: friendly.message }, { status: friendly.status });
   }
 }

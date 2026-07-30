@@ -1,6 +1,16 @@
 import { PrismaClient } from '@prisma/client';
 import * as bcrypt from 'bcryptjs';
 
+/**
+ * Mirrors `normaliseSecurityAnswer` in src/server/auth/securityAnswer.ts.
+ * Duplicated rather than imported because that module is marked `server-only`,
+ * which cannot resolve in a standalone ts-node script. The two must agree — a
+ * test in tests/security.test.ts pins the normalisation rules.
+ */
+function normaliseSecurityAnswer(answer: string): string {
+  return answer.trim().toLowerCase().replace(/\s+/g, ' ');
+}
+
 const prisma = new PrismaClient();
 
 async function main() {
@@ -331,6 +341,14 @@ async function main() {
   // Create default admin user
   const adminEmail = 'admin@fakenewsdetection.com';
   const hashedPassword = await bcrypt.hash('adminPassword123!', 10);
+
+  /*
+   * Security answers are password-equivalent secrets and must be hashed with
+   * the same normalisation the login path uses, or the seeded admin can never
+   * reset their password. The registration route was fixed for this; the seed
+   * still wrote the answer in readable form.
+   */
+  const hashedSecurityAnswer = await bcrypt.hash(normaliseSecurityAnswer('Hyderabad'), 10);
   
   await prisma.user.upsert({
     where: { email: adminEmail },
@@ -347,7 +365,7 @@ async function main() {
       roleId: adminRole.roleId,
       statusId: statusActive.statusId,
       securityQuestionId: sq1.securityQuestionId,
-      securityAnswer: 'Hyderabad',
+      securityAnswer: hashedSecurityAnswer,
     },
   });
 

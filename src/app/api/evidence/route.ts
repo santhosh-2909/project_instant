@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getAuthUser } from '@/server/auth/session';
 import { db } from '@/server/data/db';
+import { describeError } from '@/server/data/errors';
 
 export async function GET(request: Request) {
   try {
@@ -39,7 +40,11 @@ export async function GET(request: Request) {
     });
   } catch (error) {
     console.error('Error fetching evidence:', error);
-    return NextResponse.json({ error: 'Failed to retrieve evidence.' }, { status: 500 });
+    const friendly = describeError(error, 'Failed to retrieve evidence.');
+    return NextResponse.json(
+      { error: friendly.message },
+      { status: friendly.status }
+    );
   }
 }
 
@@ -102,6 +107,10 @@ export async function POST(request: Request) {
     });
   } catch (error) {
     console.error('Error creating evidence:', error);
-    return NextResponse.json({ error: 'Unable to update the evidence repository.' }, { status: 500 });
+    const friendly = describeError(error, 'Unable to update the evidence repository.');
+    return NextResponse.json(
+      { error: friendly.message },
+      { status: friendly.status }
+    );
   }
 }

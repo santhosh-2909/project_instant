@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getAuthUser } from '@/server/auth/session';
 import { db } from '@/server/data/db';
+import { describeError } from '@/server/data/errors';
 
 export async function GET() {
   try {
@@ -39,7 +40,11 @@ export async function GET() {
     return NextResponse.json(userProfile);
   } catch (error) {
     console.error('Error fetching profile:', error);
-    return NextResponse.json({ error: 'Failed to fetch profile.' }, { status: 500 });
+    const friendly = describeError(error, 'Failed to fetch profile.');
+    return NextResponse.json(
+      { error: friendly.message },
+      { status: friendly.status }
+    );
   }
 }
 
@@ -98,6 +103,10 @@ export async function PUT(request: Request) {
     });
   } catch (error) {
     console.error('Error updating profile:', error);
-    return NextResponse.json({ error: 'Failed to update profile.' }, { status: 500 });
+    const friendly = describeError(error, 'Failed to update profile.');
+    return NextResponse.json(
+      { error: friendly.message },
+      { status: friendly.status }
+    );
   }
 }

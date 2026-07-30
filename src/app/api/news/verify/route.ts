@@ -19,6 +19,7 @@ import { assess } from '@/server/verification/llm';
 import { retrieveEvidence } from '@/server/verification/retrieval';
 import { providerStatus } from '@/server/config/env';
 import { consume, clientKey, rateLimitHeaders, LIMITS } from '@/server/http/rateLimit';
+import { describeError } from '@/server/data/errors';
 
 export async function POST(request: Request) {
   const authUser = await getAuthUser();
@@ -174,6 +175,10 @@ export async function POST(request: Request) {
         .catch(() => undefined);
     }
 
-    return NextResponse.json({ error: 'Verification failed. Please try again.' }, { status: 500, headers });
+    const friendly = describeError(error, 'Verification failed. Please try again.');
+    return NextResponse.json(
+      { error: friendly.message },
+      { status: friendly.status }
+    );
   }
 }

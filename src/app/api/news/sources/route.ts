@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { db } from '@/server/data/db';
+import { describeError } from '@/server/data/errors';
 
 export async function GET(request: Request) {
   try {
@@ -49,6 +50,10 @@ export async function GET(request: Request) {
     });
   } catch (error) {
     console.error('Error fetching source list:', error);
-    return NextResponse.json({ error: 'Failed to fetch references.' }, { status: 500 });
+    const friendly = describeError(error, 'Failed to fetch references.');
+    return NextResponse.json(
+      { error: friendly.message },
+      { status: friendly.status }
+    );
   }
 }

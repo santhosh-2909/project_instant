@@ -10,6 +10,7 @@ import { NextResponse } from 'next/server';
 import { getAuthUser } from '@/server/auth/session';
 import { db } from '@/server/data/db';
 import { consume, clientKey, rateLimitHeaders, LIMITS } from '@/server/http/rateLimit';
+import { describeError } from '@/server/data/errors';
 
 export async function GET(request: Request) {
   const authUser = await getAuthUser();
@@ -74,6 +75,10 @@ export async function GET(request: Request) {
     );
   } catch (error) {
     console.error('[api/history] failed:', error);
-    return NextResponse.json({ error: 'Could not load verification history.' }, { status: 500 });
+    const friendly = describeError(error, 'Could not load verification history.');
+    return NextResponse.json(
+      { error: friendly.message },
+      { status: friendly.status }
+    );
   }
 }

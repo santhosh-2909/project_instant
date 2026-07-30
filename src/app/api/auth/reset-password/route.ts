@@ -3,6 +3,7 @@ import * as bcrypt from 'bcryptjs';
 import { db } from '@/server/data/db';
 import { hashSecurityAnswer, verifySecurityAnswer } from '@/server/auth/securityAnswer';
 import { consume, clientKey, rateLimitHeaders, LIMITS } from '@/server/http/rateLimit';
+import { describeError } from '@/server/data/errors';
 
 /**
  * POST /api/auth/reset-password
@@ -105,6 +106,10 @@ export async function POST(request: Request) {
     );
   } catch (error) {
     console.error('[api/auth/reset-password] failed:', error);
-    return NextResponse.json({ error: 'Password reset failed.' }, { status: 500, headers });
+    const friendly = describeError(error, 'Password reset failed.');
+    return NextResponse.json(
+      { error: friendly.message },
+      { status: friendly.status }
+    );
   }
 }

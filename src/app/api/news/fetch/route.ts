@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { db } from '@/server/data/db';
+import { describeError } from '@/server/data/errors';
 
 export async function GET(request: Request) {
   try {
@@ -192,6 +193,10 @@ export async function GET(request: Request) {
     });
   } catch (error) {
     console.error('Error fetching news:', error);
-    return NextResponse.json({ error: 'Failed to retrieve news articles.' }, { status: 500 });
+    const friendly = describeError(error, 'Failed to retrieve news articles.');
+    return NextResponse.json(
+      { error: friendly.message },
+      { status: friendly.status }
+    );
   }
 }

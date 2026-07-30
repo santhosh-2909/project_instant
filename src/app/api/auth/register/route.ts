@@ -9,6 +9,7 @@ import {
 import * as bcrypt from 'bcryptjs';
 import { normaliseSecurityAnswer } from '@/server/auth/securityAnswer';
 import { consume, clientKey, rateLimitHeaders, LIMITS } from '@/server/http/rateLimit';
+import { describeError } from '@/server/data/errors';
 
 export async function POST(request: Request) {
   // Audit fix S-4: cap automated account creation.
@@ -86,10 +87,8 @@ export async function POST(request: Request) {
     });
 
     if (!activeStatus) {
-      return NextResponse.json(
-        { error: 'Database status table is not seeded properly.' },
-        { status: 500 }
-      );
+      // Reachable but unseeded: a setup step, not a fault in this request.
+      return NextResponse.json({ error: 'Account statuses are missing. Run `npm run db:seed` to load the reference data.' }, { status: 503 });
     }
 
     // Find default role "Regular User"
@@ -98,10 +97,8 @@ export async function POST(request: Request) {
     });
 
     if (!defaultRole) {
-      return NextResponse.json(
-        { error: 'Database roles table is not seeded properly.' },
-        { status: 500 }
-      );
+      // Reachable but unseeded: a setup step, not a fault in this request.
+      return NextResponse.json({ error: 'User roles are missing. Run `npm run db:seed` to load the reference data.' }, { status: 503 });
     }
 
     // Hash Password
@@ -159,9 +156,10 @@ export async function POST(request: Request) {
     );
   } catch (error: any) {
     console.error('Registration error:', error);
+    const friendly = describeError(error, 'Registration failed due to a server error.');
     return NextResponse.json(
-      { error: 'Registration failed due to a server error.' },
-      { status: 500 }
+      { error: friendly.message },
+      { status: friendly.status }
     );
   }
 }
