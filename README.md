@@ -83,7 +83,7 @@ node -e "console.log(require('crypto').randomBytes(48).toString('base64url'))"
 npm run dev         # dev server
 npm run build       # production build
 npm start           # serve the build
-npm test            # 250 tests, single run
+npm test            # 265 tests, single run
 npm run test:watch
 npm run typecheck   # tsc --noEmit
 npm run lint        # oxlint
@@ -134,10 +134,30 @@ Guarantees enforced in code, each covered by tests:
 
 ## AI models
 
-| Role | Model | Key needed |
-|---|---|---|
-| Semantic search | Sentence Transformers `all-MiniLM-L6-v2`, in-process via Transformers.js/ONNX | no |
-| Reasoning + report writing | Groq, `llama-3.1-8b-instant` with a fallback chain | yes |
+| Layer | Provider | Key | Notes |
+|---|---|---|---|
+| Fact sources | Wikidata + Wikipedia | — | Current office holders, encyclopaedic records |
+| RSS news | Google News RSS | — | Real-time, thousands of outlets |
+| Semantic search | Sentence Transformers `all-MiniLM-L6-v2` | — | In-process via Transformers.js/ONNX |
+| Published fact-checks | Google Fact Check Tools | `GOOGLE_FACT_CHECK_API_KEY` | Heaviest weight in the verdict |
+| News archive | NewsAPI | `NEWS_API_KEY` | Developer tier, 100 req/day |
+| Web search | Tavily | `TAVILY_API_KEY` | **Escalation tier** — see below |
+| Reasoning + report writing | Groq | `GROQ_API_KEY` | Model fallback chain |
+
+The first three need no key, which is why verification works on a fresh clone.
+
+### Tavily is an escalation tier, not a default
+
+The free tier is 1,000 searches a month — about 33 a day. Calling it on every
+verification would exhaust that in hours, so `shouldEscalate()` runs it only
+when the free providers have not already answered convincingly: no three strong
+closely-matching sources, no published fact-check on the claim, no authoritative
+incumbency record. When the cheap providers settle it, no quota is spent.
+
+Tavily is the only provider that sees the open web. Google News and NewsAPI see
+news outlets; Wikipedia and Wikidata see encyclopaedic records. A claim debunked
+on a government portal, a university page or a company statement is invisible to
+all four — `.gov`, `.edu` and `.int` domains are scored accordingly.
 
 ### Adding your Groq key
 

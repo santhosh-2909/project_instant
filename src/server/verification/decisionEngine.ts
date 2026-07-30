@@ -70,7 +70,7 @@ const WEIGHTS = {
 } as const;
 
 /** Providers that count as live news reporting. */
-const NEWS_PROVIDERS = new Set(['googlenews', 'newsapi']);
+const NEWS_PROVIDERS = new Set(['googlenews', 'newsapi', 'tavily']);
 
 /** Providers that count as curated reference data. */
 const REFERENCE_PROVIDERS = new Set(['wikipedia', 'wikidata']);

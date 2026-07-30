@@ -50,7 +50,7 @@ const REPORT: VerificationReport = {
   providers: {
     queried: ['factcheck', 'newsapi'],
     failed: [],
-    configured: { googlenews: true, wikipedia: true, wikidata: true, factCheck: true, newsapi: true, groq: false, gemini: false },
+    configured: { googlenews: true, wikipedia: true, wikidata: true, factCheck: true, newsapi: true, tavily: false, groq: false, gemini: false },
   },
   analyzedAt: '2026-07-28T10:00:00.000Z',
   elapsedMs: 2400,
@@ -312,7 +312,7 @@ describe('TC-FLOW-04 VerdictReport', () => {
   it('flags when no live source was consulted', () => {
     render(
       <VerdictReport
-        report={{ ...REPORT, providers: { queried: [], failed: [], configured: { googlenews: true, wikipedia: true, wikidata: true, factCheck: false, newsapi: false, groq: false, gemini: false } } }}
+        report={{ ...REPORT, providers: { queried: [], failed: [], configured: { googlenews: true, wikipedia: true, wikidata: true, factCheck: false, newsapi: false, tavily: false, groq: false, gemini: false } } }}
       />
     );
     expect(screen.getByText('No live sources')).toBeInTheDocument();

@@ -70,6 +70,7 @@ export function providerStatus() {
     // Key required.
     factCheck: optionalKey('GOOGLE_FACT_CHECK_API_KEY') !== null,
     newsapi: optionalKey('NEWS_API_KEY') !== null,
+    tavily: optionalKey('TAVILY_API_KEY') !== null,
     groq: optionalKey('GROQ_API_KEY') !== null,
     gemini: optionalKey('GEMINI_API_KEY') !== null,
   };

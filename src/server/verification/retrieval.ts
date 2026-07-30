@@ -30,6 +30,7 @@ import type { RetrievedEvidence, RetrievalOutcome, EvidenceStance } from '@/shar
 import { searchGoogleNews } from '@/server/verification/providers/googleNews';
 import { searchWikipedia, searchWikidata } from '@/server/verification/providers/wikipedia';
 import { checkOfficeHolder } from '@/server/verification/providers/officeHolder';
+import { searchTavily, shouldEscalate } from '@/server/verification/providers/tavily';
 import { scoreCandidates, warmUp } from '@/server/verification/embeddings';
 
 // Re-exported so existing imports from '@/server/verification/retrieval' keep working.
@@ -216,6 +217,7 @@ const PROVIDER_BONUS: Record<string, number> = {
   wikipedia: 0.06,
   googlenews: 0.02,
   newsapi: 0,
+  tavily: 0.01,
 };
 
 /** Ranks by how much an item should move the verdict. */
@@ -279,6 +281,22 @@ export async function retrieveEvidence(claim: string, limit = 10): Promise<Retri
     providersQueried.push(id);
     collected.push(...result);
   });
+
+  /*
+   * Tavily runs last and only if needed. Its free tier is 1,000 searches a
+   * month, so it escalates rather than participating by default: if the free
+   * providers already produced strong, closely-matching evidence, another
+   * search would spend quota without changing the verdict.
+   */
+  if (optionalKey('TAVILY_API_KEY') && shouldEscalate(collected)) {
+    const web = await searchTavily(claim, query).catch(() => null);
+    if (web === null) {
+      providersFailed.push('tavily');
+    } else {
+      providersQueried.push('tavily');
+      collected.push(...web);
+    }
+  }
 
   // Re-score with the semantic layer before filtering, so a paraphrase that
   // shares no distinctive wording is not discarded as irrelevant.

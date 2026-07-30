@@ -30,7 +30,7 @@ export interface SignalContribution {
 
 export type EvidenceStance = 'Supporting' | 'Contradicting' | 'Neutral';
 
-export type ProviderId = 'factcheck' | 'newsapi' | 'googlenews' | 'wikipedia' | 'wikidata';
+export type ProviderId = 'factcheck' | 'newsapi' | 'googlenews' | 'wikipedia' | 'wikidata' | 'tavily';
 
 export interface RetrievedEvidence {
   title: string;
@@ -71,6 +71,7 @@ export interface ProviderStatus {
   wikidata: boolean;
   factCheck: boolean;
   newsapi: boolean;
+  tavily: boolean;
   groq: boolean;
   gemini: boolean;
 }

@@ -31,7 +31,7 @@ const REPORT: VerificationReport = {
   ],
   caveats: ['Coverage may be incomplete.'],
   layers: { linguistic: true, retrieval: true, reference: true, llm: false },
-  providers: { queried: ['factcheck'], failed: [], configured: { googlenews: true, wikipedia: true, wikidata: true, factCheck: true, newsapi: false, groq: false, gemini: false } },
+  providers: { queried: ['factcheck'], failed: [], configured: { googlenews: true, wikipedia: true, wikidata: true, factCheck: true, newsapi: false, tavily: false, groq: false, gemini: false } },
   analyzedAt: '2026-07-28T10:00:00.000Z',
   elapsedMs: 2400,
 };
