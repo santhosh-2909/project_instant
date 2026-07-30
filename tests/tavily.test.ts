@@ -1,7 +1,15 @@
 // @vitest-environment node
 
 import { describe, it, expect } from 'vitest';
-import { domainReliability, publisherFromUrl, shouldEscalate } from '@/server/verification/providers/tavily';
+import {
+  blendRelevance,
+  domainReliability,
+  mapTavilyResults,
+  publisherFromUrl,
+  shouldEscalate,
+  type TavilyResult,
+} from '@/server/verification/providers/tavily';
+import realResponse from './fixtures/tavily-response.json';
 import type { ProviderId, RetrievedEvidence } from '@/shared/types';
 
 function evidence(overrides: Partial<RetrievedEvidence> = {}): RetrievedEvidence {
@@ -107,5 +115,89 @@ describe('TC-TAV-03 shouldEscalate() — protects a 1,000/month quota', () => {
   it('still escalates when only one or two strong sources exist', () => {
     const two = Array.from({ length: 2 }, () => evidence({ similarity: 0.6, reliability: 0.9 }));
     expect(shouldEscalate(two)).toBe(true);
+  });
+});
+
+
+describe('TC-TAV-04 mapping a REAL Tavily response', () => {
+  // Captured verbatim from the live API, so this pins the mapper to the shape
+  // Tavily actually returns rather than the one it was assumed to return.
+  const results = realResponse.results as TavilyResult[];
+  const claim = 'Which API detects real or fake news spreading?';
+  const mapped = mapTavilyResults(claim, results);
+
+  it('maps every result without dropping any', () => {
+    expect(mapped).toHaveLength(5);
+  });
+
+  it('carries the real URL through untouched', () => {
+    expect(mapped[0].url).toBe('https://newsapi.ai/data-mining');
+    expect(mapped.every((m) => m.url.startsWith('http'))).toBe(true);
+  });
+
+  it('derives a publisher, because Tavily does not supply one', () => {
+    expect(mapped[0].publisher).toBe('Newsapi');
+    expect(mapped[3].publisher).toBe('Link'); // link.springer.com
+    expect(mapped.every((m) => m.publisher.length > 0)).toBe(true);
+  });
+
+  it('DOCUMENTED GAP: publishedAt is null — the API returns no date', () => {
+    // Every result in the live payload lacks published_date. The UI shows
+    // "Date not reported" for these rather than inventing one.
+    expect(mapped.every((m) => m.publishedAt === null)).toBe(true);
+  });
+
+  it('recognises the academic domain in the result set', () => {
+    const springer = mapped.find((m) => m.url.includes('springer'));
+    expect(springer!.reliability).toBeGreaterThanOrEqual(0.45);
+  });
+
+  it('produces similarity scores inside 0..1 for all of them', () => {
+    for (const item of mapped) {
+      expect(item.similarity).toBeGreaterThanOrEqual(0);
+      expect(item.similarity).toBeLessThanOrEqual(1);
+    }
+  });
+
+  it('leaves stance Neutral — a web page asserts nothing on its own', () => {
+    expect(mapped.every((m) => m.stance === 'Neutral')).toBe(true);
+  });
+
+  it('keeps the top-ranked result above the relevance floor', () => {
+    // MIN_SIMILARITY in retrieval.ts is 0.1. Tavily's own scores in this
+    // response run 0.19-0.41, so a naive pass-through would sink most of them.
+    expect(mapped[0].similarity).toBeGreaterThan(0.1);
+  });
+});
+
+describe('TC-TAV-05 blendRelevance() calibration', () => {
+  const snippet = 'some page text';
+
+  it('stretches Tavily’s compressed band rather than damping it', () => {
+    // Live scores ranged 0.19-0.41. Multiplying those down would push nearly
+    // every web result under the 0.3 "close match" threshold, making the
+    // provider contribute almost nothing.
+    const top = blendRelevance('unrelated claim text', { title: 'x', score: 0.41 }, snippet);
+    expect(top).toBeGreaterThan(0.41);
+  });
+
+  it('floors a very low score at zero rather than going negative', () => {
+    expect(blendRelevance('unrelated', { title: 'x', score: 0.05 }, snippet)).toBeGreaterThanOrEqual(0);
+  });
+
+  it('caps a very high score at one', () => {
+    expect(blendRelevance('unrelated', { title: 'x', score: 0.99 }, snippet)).toBeLessThanOrEqual(1);
+  });
+
+  it('falls back to measured similarity when the score is missing', () => {
+    const claim = 'government announces free electricity';
+    const withScore = blendRelevance(claim, { title: claim, score: undefined }, claim);
+    expect(withScore).toBeGreaterThan(0.5); // text matches the claim exactly
+  });
+
+  it('prefers our measurement when it beats the provider ranking', () => {
+    const claim = 'government announces free electricity for households';
+    const blended = blendRelevance(claim, { title: claim, score: 0.2 }, claim);
+    expect(blended).toBeGreaterThan(0.5);
   });
 });

@@ -1,0 +1,51 @@
+{
+  "_comment": "Verbatim Tavily response captured from the live API. Kept as a fixture so the mapper is tested against real output rather than an assumed shape — note the absence of published_date on every result.",
+  "query": "Api kry to find an real/fake news spreading",
+  "follow_up_questions": null,
+  "answer": null,
+  "images": [],
+  "results": [
+    {
+      "url": "https://newsapi.ai/data-mining",
+      "title": "News API | Best API to find the latest and archive news",
+      "content": "If you are looking to analyze information propagation, fake news or related tasks, you can make use of our event detection. News API is able to automatically find and group articles that are covering the same event.",
+      "score": 0.41250706,
+      "raw_content": null,
+      "favicon": "https://newsapi.ai/landing/img/favicons/apple-touch-icon.png"
+    },
+    {
+      "url": "https://realeyes.ai/blog/deepfake-detection-api-guide",
+      "title": "Deepfake Detection API: Top 5 Solutions Compared",
+      "content": "A simple \"real\" or \"fake\" answer is rarely enough. The best detection APIs provide a detailed analysis with a clear confidence score.",
+      "score": 0.38831696,
+      "raw_content": null,
+      "favicon": "https://realeyes.ai/wp-content/uploads/2025/11/favicon-96x96-1.png"
+    },
+    {
+      "url": "https://newsdata.io/blog/fake-news-detection",
+      "title": "Fake News Detection: How AI-Powered News APIs Help Identify Misinformation?",
+      "content": "The internet is flooded with thousands of news articles, social media posts, and viral headlines every minute. False stories spread roughly six times faster than true ones on social media platforms.",
+      "score": 0.3369858,
+      "raw_content": null,
+      "favicon": "https://s.newsdata.io/fav/apple-touch-icon-180x180.png"
+    },
+    {
+      "url": "https://link.springer.com/article/10.1007/s42452-025-07548-3",
+      "title": "Exploring machine learning for fake news detection: techniques, tools, challenges, and future research directions",
+      "content": "Text APIs use natural language processing techniques to analyze the hidden meanings of the text, such as misleading language patterns, emotional content, incorrect claims, or false headlines.",
+      "score": 0.24497704,
+      "raw_content": null,
+      "favicon": "https://link.springer.com/oscar-static/img/favicons/darwin/android-chrome-192x192.png"
+    },
+    {
+      "url": "https://webz.io/products/news-api",
+      "title": "News API | Webz",
+      "content": "Automatically detects and flags suspicious, satirical, or misleading content along with its political slant to keep your insights accurate and trustworthy.",
+      "score": 0.19337612,
+      "raw_content": null,
+      "favicon": "https://webz.io/wp-content/uploads/2025/02/cropped-favicon-1-180x180.png"
+    }
+  ],
+  "response_time": 3.79,
+  "request_id": "7639d860-d9ee-48c6-8aa4-8f72a9848d14"
+}

@@ -112,6 +112,60 @@ export function shouldEscalate(existing: RetrievedEvidence[]): boolean {
 
 /* ------------------------------------------------------------------ Search */
 
+/**
+ * Maps a Tavily payload onto our evidence shape.
+ *
+ * Separated from the HTTP call so it can be tested against a recorded real
+ * response rather than an assumed one. Verified against live output: results
+ * carry `url`, `title`, `content` and `score`, and — notably — **no
+ * `published_date`**, so evidence dates come back null for this provider.
+ */
+export function mapTavilyResults(claim: string, results: TavilyResult[]): RetrievedEvidence[] {
+  return results
+    .filter((item) => item.url && item.title)
+    .map((item) => {
+      const publisher = publisherFromUrl(item.url!);
+      const snippet = (item.content ?? '').slice(0, 400);
+
+      return {
+        title: item.title!,
+        publisher,
+        author: null,
+        url: item.url!,
+        publishedAt: item.published_date ?? null,
+        snippet: snippet || item.title!,
+        stance: 'Neutral' as const,
+        similarity: blendRelevance(claim, item, snippet),
+        reliability: domainReliability(item.url!, publisher),
+        provider: 'tavily' as const,
+      };
+    });
+}
+
+/**
+ * Blends Tavily's ranking with our own measurement.
+ *
+ * Neither alone is right. Tavily scores a page against a reduced keyword query,
+ * not the full claim; our scorer measures the claim but cannot see how the page
+ * ranked against the whole web.
+ *
+ * Its scores also run low and compressed — a live query returned 0.19 to 0.41
+ * across five results — so they are stretched rather than damped. Damping them
+ * would push nearly every web result under the 0.3 threshold that
+ * `corroborationSignal` treats as a close match, making the provider
+ * contribute almost nothing.
+ */
+export function blendRelevance(claim: string, item: TavilyResult, snippet: string): number {
+  const measured = similarity(claim, `${item.title ?? ''} ${snippet}`);
+
+  if (typeof item.score !== 'number' || !Number.isFinite(item.score)) return measured;
+
+  // Map Tavily's usable band (~0.15-0.60) onto 0..1 before comparing.
+  const stretched = Math.max(0, Math.min(1, (item.score - 0.15) / 0.45));
+
+  return Math.max(measured, stretched);
+}
+
 export async function searchTavily(
   claim: string,
   query: string,
@@ -150,35 +204,7 @@ export async function searchTavily(
     }
 
     const data = (await response.json()) as TavilyPayload;
-
-    return (data.results ?? [])
-      .filter((item) => item.url && item.title)
-      .map((item) => {
-        const publisher = publisherFromUrl(item.url!);
-        const snippet = (item.content ?? '').slice(0, 400);
-
-        return {
-          title: item.title!,
-          publisher,
-          author: null,
-          url: item.url!,
-          publishedAt: item.published_date ?? null,
-          snippet: snippet || item.title!,
-          stance: 'Neutral' as const,
-          /*
-           * Blend Tavily's ranking with our own measurement. Tavily knows how
-           * well the page matched the query; our scorer knows how well the text
-           * matches the claim. Neither alone is enough — its score reflects a
-           * reduced keyword query, not the full claim.
-           */
-          similarity: Math.max(
-            similarity(claim, `${item.title} ${snippet}`),
-            typeof item.score === 'number' ? Math.min(1, item.score) * 0.8 : 0
-          ),
-          reliability: domainReliability(item.url!, publisher),
-          provider: 'tavily' as const,
-        };
-      });
+    return mapTavilyResults(claim, data.results ?? []);
   } catch (error) {
     console.warn('[tavily] request failed:', error instanceof Error ? error.message : error);
     return null;
