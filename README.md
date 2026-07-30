@@ -290,6 +290,19 @@ DATABASE_URL="<production-url>" npx prisma db push
 DATABASE_URL="<production-url>" npm run db:seed
 ```
 
+### Framework preset
+
+`vercel.json` pins `framework: "nextjs"`. This matters if the Vercel project was
+first imported while the repo was still a Vite app: Vercel remembers the Vite
+preset and keeps looking for an output directory named `dist`, which a Next.js
+build never produces. The symptom is a build that compiles fine and then fails
+with *No Output Directory named "dist" found*.
+
+If it persists after this file lands, the dashboard has an explicit override that
+takes priority — clear it under **Settings → Build and Deployment → Framework
+Settings**, set Framework Preset to **Next.js**, and switch Output Directory back
+to its default rather than a literal `dist`.
+
 ### Build constraints on Vercel
 
 Two things in `next.config.ts` exist purely to make the Vercel deploy work, and
